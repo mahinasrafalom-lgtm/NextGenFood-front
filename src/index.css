@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply text-gray-900 font-sans;
+    background-color: #FBF9F6 !important;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-mid text-white px-6 py-3 rounded-full font-semibold hover:bg-[#d9771e] transition-colors duration-200 inline-flex items-center justify-center;
+  }
+  
+  .section-title {
+    @apply text-2xl font-bold text-gray-900 mb-6;
+  }
+  
+  /* Hide scrollbar for category nav and other horizontal scrolls */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ── Futuristic Chat Widget Animations ── */
+@keyframes float-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.1); }
+  50% { transform: translate(-20px, 15px) scale(0.95); }
+  75% { transform: translate(15px, 25px) scale(1.05); }
+}
+
+@keyframes float-orb-reverse {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-25px, 20px) scale(1.08); }
+  50% { transform: translate(20px, -15px) scale(0.92); }
+  75% { transform: translate(-10px, -25px) scale(1.04); }
+}
+
+@keyframes shimmer-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes text-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(255,255,255,0.3); }
+  50% { text-shadow: 0 0 20px rgba(255,255,255,0.6), 0 0 40px rgba(255,200,100,0.2); }
+}
+
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes pulse-height {
+  0% { transform: scaleY(0.5); opacity: 0.6; }
+  100% { transform: scaleY(1.5); opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.2s ease-out forwards;
+}
+
+/* Custom Swiper Pagination Styles */
+.product-carousel-wrapper {
+  /* Let Swiper know our base bullet size and gap for dynamic math */
+  --swiper-pagination-bullet-size: 10px;
+  --swiper-pagination-bullet-horizontal-gap: 5px;
+}
+
+/* Ensure the pagination wrapper sits at the bottom and is centered */
+.product-carousel-wrapper .swiper-pagination {
+  bottom: 0px !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 
+  Swiper calculates width dynamically. 
+  Because our active bullet is 24px instead of 10px (14px difference), 
+  we adjust the container width slightly to prevent clipping and keep it centered.
+*/
+.product-carousel-wrapper .swiper-pagination-bullets-dynamic {
+  /* 5 dots (20px each with margins) = 100px + 14px extra for active pill = 114px */
+  width: 114px !important; 
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  padding: 4px 0 !important; /* Prevent vertical clipping of the active pill border */
+}
+
+.product-carousel-wrapper .swiper-pagination-bullet {
+  width: var(--swiper-pagination-bullet-size);
+  height: var(--swiper-pagination-bullet-size);
+  background: transparent !important;
+  border: 1.5px solid #F28522;
+  transition: all 0.3s ease-in-out, transform 0.3s ease-in-out !important;
+  opacity: 1; /* Override opacity so scaled down bullets remain visible */
+  flex-shrink: 0; /* Keep size constant */
+}
+
+.product-carousel-wrapper .swiper-pagination-bullet-active {
+  width: 24px;
+  background: #F28522 !important;
+  border-radius: 9999px;
+  border-color: #F28522;
+}
