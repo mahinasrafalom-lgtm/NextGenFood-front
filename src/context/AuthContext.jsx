@@ -30,13 +30,17 @@ export const AuthProvider = ({ children }) => {
       });
       const token = await userCredential.user.getIdToken();
       await syncUserProfile({ email, name, phone }, token);
+      localStorage.setItem('loginTimestamp', Date.now());
       return userCredential;
     });
   };
 
   // Log in
   const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+    return signInWithEmailAndPassword(auth, email, password).then((userCredential) => {
+      localStorage.setItem('loginTimestamp', Date.now());
+      return userCredential;
+    });
   };
 
   // Google Login
@@ -50,11 +54,13 @@ export const AuthProvider = ({ children }) => {
       name: user.displayName,
       photoURL: user.photoURL
     }, token);
+    localStorage.setItem('loginTimestamp', Date.now());
     return userCredential;
   };
 
   // Log out
   const logout = () => {
+    localStorage.removeItem('loginTimestamp');
     return signOut(auth);
   };
 
@@ -68,15 +74,28 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-      
-      // If user logs in, we might want to get their custom profile from our MongoDB
       if (user) {
+        // Enforce 1-week session limit
+        const loginTime = localStorage.getItem('loginTimestamp');
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        
+        if (loginTime && (Date.now() - parseInt(loginTime, 10) > oneWeek)) {
+          // Session expired
+          logout();
+          return;
+        } else if (!loginTime) {
+          // Set timestamp for existing sessions that don't have one
+          localStorage.setItem('loginTimestamp', Date.now());
+        }
+
+        setCurrentUser(user);
+        setLoading(false);
         user.getIdToken().then((token) => {
           localStorage.setItem('authToken', token);
         });
       } else {
+        setCurrentUser(null);
+        setLoading(false);
         localStorage.removeItem('authToken');
       }
     });

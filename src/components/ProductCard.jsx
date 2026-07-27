@@ -36,7 +36,7 @@ const ProductCard = ({ product }) => {
   const savings = product.priceMax ? product.priceMax - product.priceMin : 0;
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white hover:shadow-md transition-shadow duration-300 flex flex-col h-full relative group overflow-hidden font-sans">
+    <div className="border border-gray-200 rounded-lg bg-[#FFFFFF] hover:shadow-md transition-shadow duration-300 flex flex-col h-full relative group overflow-hidden font-sans">
       
       {/* Discount / Best Selling Badge */}
       {hasDiscount && (
@@ -46,7 +46,7 @@ const ProductCard = ({ product }) => {
       )}
 
       {/* Image Container (Top Block) - Uniform image size */}
-      <Link to={`/product/${productId}`} className="w-full aspect-square flex items-center justify-center overflow-hidden relative bg-white flex-shrink-0 block rounded-t-lg">
+      <Link to={`/product/${productId}`} className="w-full aspect-square flex items-center justify-center overflow-hidden relative bg-[#FFFFFF] flex-shrink-0 block rounded-t-lg">
         <img 
           ref={imgRef}
           src={product.image} 
@@ -56,7 +56,14 @@ const ProductCard = ({ product }) => {
       </Link>
 
       {/* Text/Content Container (Bottom Block) */}
-      <div className="flex-1 flex flex-col p-4 text-[#666666] text-[14px]">
+      <div className="flex-1 flex flex-col p-4 bg-[#FFFFFF] text-[#666666] text-[14px]">
+        {/* Category Label */}
+        {product.category && (
+          <div className="text-[11px] sm:text-[12px] text-gray-400 font-medium capitalize mb-[4px]">
+            {product.category}{product.subcategory ? ` ${product.subcategory}` : ''}
+          </div>
+        )}
+
         {/* Product Title */}
         <Link to={`/product/${productId}`} className="text-[14px] font-semibold text-[#222831] line-clamp-2 hover:text-brand-mid cursor-pointer leading-snug mb-[8px] block">
           {product.name}
@@ -82,7 +89,7 @@ const ProductCard = ({ product }) => {
         {/* Action Area */}
         <div className="h-[36px] sm:h-[40px] mt-auto"> 
           {isInCart ? (
-            <div className="flex items-center justify-between bg-white rounded border border-brand-mid h-full w-full overflow-hidden">
+            <div className="flex items-center justify-between bg-[#FFFFFF] rounded border border-brand-mid h-full w-full overflow-hidden">
               <button 
                 className="w-10 h-full flex items-center justify-center text-brand-mid hover:bg-brand-section transition-colors"
                 onClick={() => updateQuantity(productId, cartItem.quantity - 1)}

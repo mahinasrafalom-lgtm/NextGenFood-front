@@ -139,6 +139,19 @@ const ChatWidget = () => {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Listen for external open events
+  useEffect(() => {
+    const handleOpenChat = () => {
+      if (chatId) {
+        setStep(3);
+      } else {
+        setStep(1);
+      }
+    };
+    window.addEventListener('openChatWidget', handleOpenChat);
+    return () => window.removeEventListener('openChatWidget', handleOpenChat);
+  }, [chatId]);
+
   const formatRecordingTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');

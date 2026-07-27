@@ -19,6 +19,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import OrderConfirmation from './pages/OrderConfirmation';
+import TrackOrder from './pages/TrackOrder';
+import ConsultationForm from './pages/ConsultationForm';
+import About from './pages/About';
+import Wishlist from './pages/Wishlist';
+import Faq from './pages/Faq';
 import CartDrawer from './components/CartDrawer';
 import Toast from './components/Toast';
 import { useCart } from './context/CartContext';
@@ -41,6 +46,7 @@ function App() {
   const isCheckoutPage = location.pathname === '/checkout' || location.pathname === '/order-confirmation';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isProfilePage = location.pathname === '/profile';
+  const isTrackOrderPage = location.pathname === '/track-order';
   
   // Global nav rendering logic:
   // - Home: Show all (Announcement, Header, CategoryNav)
@@ -49,9 +55,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-brand-light font-sans text-gray-900 pb-[76px] md:pb-0 relative w-full">
-      <div className="w-full overflow-x-hidden">
+      <div className="w-full overflow-x-clip">
         {!isProductDetailsPage && !isCheckoutPage && !isAuthPage && (
-        <div className={isProductListingPage ? "hidden lg:block" : ""}>
+        <div className={isProductListingPage ? "hidden lg:contents" : "contents"}>
 
           <Header 
             cartCount={cartCount} 
@@ -126,9 +132,14 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/order-confirmation" element={<OrderConfirmation />} />
+        <Route path="/track-order" element={<TrackOrder />} />
+        <Route path="/consultation/:petType" element={<ConsultationForm />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/faq" element={<Faq />} />
       </Routes>
 
-        {(isHomePage || isProfilePage) && (
+        {(isHomePage || isProfilePage || isTrackOrderPage) && (
           <>
             {isHomePage && <TrustBar />}
             {isHomePage && <Newsletter />}

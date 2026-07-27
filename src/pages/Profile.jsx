@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
 const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const [tickets, setTickets] = useState([]);
   const [coupons, setCoupons] = useState({ available: [], applied: [] });
   const [reviews, setReviews] = useState([]);
-  const [newTicket, setNewTicket] = useState({ title: '', topic: '', description: '' });
+  const [newTicket, setNewTicket] = useState({ title: '', topic: '', description: '', photoUrl: '' });
 
 
   useEffect(() => {
@@ -89,6 +90,21 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
     }
   }, [currentUser]);
 
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image size should be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewTicket({ ...newTicket, photoUrl: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateTicket = async () => {
     if (!newTicket.title || !newTicket.topic || !newTicket.description) {
       showToast('Please fill all required fields');
@@ -103,7 +119,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       });
       const data = await res.json();
       setTickets([data, ...tickets]);
-      setNewTicket({ title: '', topic: '', description: '' });
+      setNewTicket({ title: '', topic: '', description: '', photoUrl: '' });
       setIsCreatingTicket(false);
       showToast('Ticket created successfully!');
     } catch(err) {
@@ -162,7 +178,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         { id: 'cancelled-orders', label: 'Cancelled Orders' }
       ]
     },
-    { id: 'wishlist', label: 'Wishlist', icon: Heart },
+
     { id: 'promo', label: 'Promo/Coupon', icon: Ticket },
     { id: 'address', label: 'Address', icon: MapPin },
     { id: 'payments', label: 'Payments', icon: CreditCard },
@@ -230,16 +246,6 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           </div>
         </div>
 
-        {/* Product in wishlist's */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-pink-50/50 to-pink-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
-          <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{wishlist.length}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Product in wishlist's</p>
-          </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30 shrink-0">
-            <Heart size={20} className="text-white" fill="white" />
-          </div>
-        </div>
 
         {/* Amount spent */}
         <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-rose-50/50 to-rose-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
@@ -570,13 +576,13 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                 <div className="relative">
                   <select 
                     value={newAddress.state} 
-                    onChange={e => setNewAddress({...newAddress, state: e.target.value})}
+                    onChange={e => setNewAddress({...newAddress, state: e.target.value, city: ''})}
                     className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium text-sm transition-all"
                   >
-                    <option value="">Select</option>
-                    <option value="Dhaka">Dhaka</option>
-                    <option value="Chittagong">Chittagong</option>
-                    <option value="Sylhet">Sylhet</option>
+                    <option value="">Select District</option>
+                    {ALL_DISTRICTS.map(dist => (
+                      <option key={dist.id} value={dist.id}>{dist.label}</option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                     <ChevronDown size={16} />
@@ -590,12 +596,13 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                   <select 
                     value={newAddress.city} 
                     onChange={e => setNewAddress({...newAddress, city: e.target.value})}
-                    className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium text-sm transition-all"
+                    disabled={!newAddress.state}
+                    className={`w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-medium text-sm transition-all ${!newAddress.state ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
                   >
-                    <option value="">Select</option>
-                    <option value="Gulshan">Gulshan</option>
-                    <option value="Banani">Banani</option>
-                    <option value="Dhanmondi">Dhanmondi</option>
+                    <option value="">Select Thana</option>
+                    {newAddress.state && THANAS_BY_DISTRICT[newAddress.state]?.map(thana => (
+                      <option key={thana} value={thana}>{thana}</option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                     <ChevronDown size={16} />
@@ -789,11 +796,16 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">Upload attachment</label>
-              <div className="w-full border border-gray-100 rounded-lg bg-gray-50 flex items-center justify-center py-4 cursor-pointer hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-2 text-gray-600 font-bold text-sm">
-                  <Upload size={16} /> Upload photo
-                </div>
-              </div>
+              <label className="w-full border border-gray-100 rounded-lg bg-gray-50 flex flex-col items-center justify-center py-4 cursor-pointer hover:bg-gray-100 transition-colors relative overflow-hidden">
+                {newTicket.photoUrl ? (
+                  <img src={newTicket.photoUrl} alt="Attachment" className="max-h-32 object-contain" />
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-600 font-bold text-sm">
+                    <Upload size={16} /> Upload photo
+                  </div>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              </label>
             </div>
 
             <div className="pt-2">

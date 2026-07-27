@@ -1,14 +1,86 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, User, SlidersHorizontal, Menu, X, MapPin, Heart, Calendar, HelpCircle, PhoneCall, MessageCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, setMobileSearchOpen, mobileMenuOpen, setMobileMenuOpen, isLoggedIn }) => {
   const { openCartDrawer } = useCart();
   const searchRef = useRef(null);
+  const moreMenuRef = useRef(null);
   const navigate = useNavigate();
   const [searchCategory, setSearchCategory] = useState('সব বিভাগ');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
+  const isProductDetailsPage = location.pathname.startsWith('/product/');
+  const isProductListingPage = location.pathname === '/products';
+  
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  
+  // Fetch all products for search recommendations
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const { fetchProducts } = await import('../services/api');
+        const data = await fetchProducts();
+        setAllProducts(data || []);
+      } catch (err) {
+        console.error("Failed to load products for search", err);
+      }
+    };
+    loadProducts();
+  }, []);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    
+    const query = searchQuery.toLowerCase().trim();
+    const isGlobal = searchCategory === 'সব বিভাগ';
+    
+    const results = allProducts.filter(p => {
+      // If a specific animal category is selected in the dropdown, restrict search to it
+      if (!isGlobal) {
+        const pCat = p.category ? p.category.toLowerCase() : '';
+        const sCat = searchCategory === 'পোষা পশু' ? 'pet' : searchCategory.toLowerCase(); // Map Bengali to English logic if needed, but since data is English:
+        // Actually searchCategory maps to Bengali like "বিড়াল", but our data has "cat"
+        const categoryMap = { 'বিড়াল': 'cat', 'কুকুর': 'dog', 'পাখি': 'bird', 'মাছ': 'fish', 'পোষা পশু': 'pet' };
+        const mappedCat = categoryMap[searchCategory];
+        if (mappedCat && pCat !== mappedCat) return false;
+      }
+      
+      const name = p.name ? p.name.toLowerCase() : '';
+      const brand = p.brand ? p.brand.toLowerCase() : '';
+      const category = p.category ? p.category.toLowerCase() : '';
+      const subcategory = p.subcategory ? p.subcategory.toLowerCase() : '';
+      const desc = p.description ? p.description.toLowerCase() : '';
+
+      return name.includes(query) || 
+             brand.includes(query) || 
+             category.includes(query) || 
+             subcategory.includes(query) || 
+             desc.includes(query);
+    });
+    
+    return results.slice(0, 5); // Max 5 suggestions
+  }, [searchQuery, searchCategory, allProducts]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setIsSearchFocused(false);
+      if (mobileSearchOpen) setMobileSearchOpen(false);
+      navigate(`/products?searchQuery=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -16,6 +88,11 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
         if (!event.target.closest('.search-toggle-btn')) {
           setMobileSearchOpen(false);
         }
+      }
+      
+      // Handle more menu click outside
+      if (moreMenuOpen && moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setMoreMenuOpen(false);
       }
     };
 
@@ -26,10 +103,15 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [mobileSearchOpen, setMobileSearchOpen]);
+  }, [mobileSearchOpen, setMobileSearchOpen, moreMenuOpen]);
+
+  const shouldBeSticky = isProductDetailsPage || isProductListingPage;
+  const stickyClasses = shouldBeSticky 
+    ? `sticky top-0 z-50 transition-all duration-300 ease-in-out ${isScrolled ? 'bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)] py-1' : 'bg-white/80 backdrop-blur-xl py-0'}`
+    : `relative z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50`;
 
   return (
-    <header className="bg-white/80 backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.04)] border-b border-gray-200/50 font-bengali sticky top-0 z-50 transition-all duration-300 w-full overflow-visible">
+    <header className={`font-bengali w-full overflow-visible ${stickyClasses}`}>
       {/* Row 1: Logo and Icons */}
       <div className="container mx-auto px-3 py-2.5 sm:py-3 max-w-[1350px] flex items-center justify-between gap-2 lg:gap-8 w-full relative">
         
@@ -59,46 +141,69 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
 
         {/* Desktop Search Bar */}
         {!isCheckoutPage && (
-          <div className="flex-grow max-w-md hidden md:flex items-center border border-gray-300 rounded-full bg-white focus-within:border-brand-mid focus-within:ring-1 focus-within:ring-brand-mid transition-all duration-200 ml-4 lg:ml-0 pl-1 pr-1 py-1">
-            
-            {searchCategory !== 'সব বিভাগ' && (
-              <div className="flex items-center bg-brand-section text-brand-dark px-2.5 py-1 rounded-full text-xs font-semibold ml-1 whitespace-nowrap">
-                {searchCategory}
-                <button onClick={() => setSearchCategory('সব বিভাগ')} className="ml-1 hover:text-red-500 transition-colors">
-                  <X size={12} strokeWidth={3} />
+          <div className="flex-grow max-w-md hidden md:flex flex-col relative z-50">
+            <form 
+              onSubmit={handleSearchSubmit}
+              className={`flex items-center border rounded-full bg-white transition-all duration-200 ml-4 lg:ml-0 pl-1 pr-1 py-1 relative z-20 ${isSearchFocused ? 'border-brand-mid ring-1 ring-brand-mid' : 'border-gray-300'}`}
+            >
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                placeholder="পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."
+                className="flex-grow py-1.5 px-3 outline-none text-sm placeholder:text-gray-400 bg-transparent text-gray-800 min-w-[120px]"
+              />
+              
+              <div className="flex items-center gap-1">
+                {/* Search Button */}
+                <button type="submit" className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">
+                  <Search size={16} strokeWidth={2.5} />
                 </button>
               </div>
-            )}
+            </form>
 
-            <input 
-              type="text" 
-              placeholder={searchCategory !== 'সব বিভাগ' ? "খুঁজুন..." : "পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."}
-              className="flex-grow py-1.5 px-3 outline-none text-sm placeholder:text-gray-400 bg-transparent text-gray-800 min-w-[120px]"
-            />
-            
-            <div className="flex items-center gap-1">
-              {/* Filter / Category Select */}
-              <div className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title="ক্যাটাগরি ফিল্টার">
-                <SlidersHorizontal size={16} />
-                <select 
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                >
-                  <option value="সব বিভাগ">সব বিভাগ (All)</option>
-                  <option value="বিড়াল">বিড়াল</option>
-                  <option value="কুকুর">কুকুর</option>
-                  <option value="পাখি">পাখি</option>
-                  <option value="মাছ">মাছ</option>
-                  <option value="পোষা পশু">পোষা পশু</option>
-                </select>
+            {/* Search Recommendations Dropdown */}
+            {isSearchFocused && searchQuery.trim() !== '' && (
+              <div className="absolute top-full left-4 lg:left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                {searchResults.length > 0 ? (
+                  <>
+                    <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      Suggested Products
+                    </div>
+                    {searchResults.map(product => (
+                      <div 
+                        key={product._id || product.id}
+                        onClick={() => navigate(`/product/${product._id || product.id}`)}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-white border border-gray-100 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <img src={product.image} alt={product.name} className="max-w-full max-h-full object-contain" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{product.name}</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-brand-mid font-bold">৳{product.priceMin?.toLocaleString()}</span>
+                            {product.category && <span className="text-gray-400 capitalize">{product.category}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button 
+                      onMouseDown={(e) => { e.preventDefault(); handleSearchSubmit(e); }}
+                      className="w-full text-center text-sm text-brand-primary font-bold py-3 mt-1 hover:bg-gray-50 border-t border-gray-100 transition-colors"
+                    >
+                      See all results for "{searchQuery}"
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-4 py-6 text-center text-gray-500 text-sm">
+                    No products found for "{searchQuery}"
+                  </div>
+                )}
               </div>
-
-              {/* Search Button */}
-              <button className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">
-                <Search size={16} strokeWidth={2.5} />
-              </button>
-            </div>
+            )}
           </div>
         )}
 
@@ -125,13 +230,7 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
               <span className="text-[12px] font-semibold leading-tight">{isLoggedIn ? 'Profile' : 'Sign In'}</span>
             </button>
 
-            {/* Wishlist */}
-            <Link to="/wishlist" className="hidden md:flex flex-col items-center justify-center group text-gray-700 hover:text-brand-mid transition-colors">
-              <div className="relative mb-0.5">
-                <Heart size={22} strokeWidth={1.8} className="group-hover:scale-105 transition-transform" />
-              </div>
-              <span className="text-[12px] font-semibold leading-tight">Wishlist</span>
-            </Link>
+
 
             {/* Cart */}
             <button 
@@ -148,23 +247,23 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
             </button>
 
             {/* More Menu (Dropdown) - Hidden on Mobile */}
-            <div className="relative group/more hidden md:block">
+            <div className="relative hidden md:block" ref={moreMenuRef}>
               <button 
-                className="flex flex-col items-center justify-center text-brand-mid transition-colors focus:outline-none"
+                className={`flex flex-col items-center justify-center transition-colors focus:outline-none ${moreMenuOpen ? 'text-brand-mid' : 'text-gray-700 hover:text-brand-mid group'}`}
                 onClick={() => setMoreMenuOpen(!moreMenuOpen)}
               >
-                <div className="relative mb-0.5 text-brand-mid">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div className="relative mb-0.5">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={`${!moreMenuOpen && 'group-hover:scale-105 transition-transform'}`}>
                     <line x1="4" y1="6" x2="20" y2="6" />
                     <line x1="4" y1="12" x2="15" y2="12" />
                     <line x1="4" y1="18" x2="9" y2="18" />
                   </svg>
                 </div>
-                <span className="text-[12px] font-bold leading-tight">More</span>
+                <span className="text-[12px] font-semibold leading-tight">More</span>
               </button>
 
               {/* Dropdown Box */}
-              <div className={`absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5 z-50 transition-all duration-200 ${moreMenuOpen ? 'block' : 'hidden group-hover/more:block'}`}>
+              <div className={`absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-[0_10px_35px_rgba(0,0,0,0.12)] border border-gray-100 py-1.5 z-50 transition-all duration-200 ${moreMenuOpen ? 'block' : 'hidden'}`}>
                 
                 <Link to="/about" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-mid transition-colors border-b border-gray-100/80">
                   <Calendar size={18} className="text-gray-700" />
@@ -201,48 +300,70 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
       {/* Mobile Search Bar (Expandable, matches Desktop Search design) */}
       {!isCheckoutPage && (
         <div ref={searchRef} className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out absolute w-full left-0 top-full bg-white shadow-md z-40 ${mobileSearchOpen ? 'max-h-28 opacity-100 border-b border-gray-100 py-2' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-          <div className="px-3 py-0.5">
-            <div className="flex items-center border border-gray-300 rounded-full bg-white focus-within:border-brand-mid focus-within:ring-1 focus-within:ring-brand-mid transition-all pl-1 pr-1 py-1">
+          <div className="px-3 py-0.5 relative">
+            <form 
+              onSubmit={handleSearchSubmit}
+              className={`flex items-center border rounded-full bg-white transition-all pl-1 pr-1 py-1 ${isSearchFocused ? 'border-brand-mid ring-1 ring-brand-mid' : 'border-gray-300'}`}
+            >
               
-              {searchCategory !== 'সব বিভাগ' && (
-                <div className="flex items-center bg-brand-section text-brand-dark px-2.5 py-1 rounded-full text-xs font-semibold ml-1 whitespace-nowrap">
-                  {searchCategory}
-                  <button onClick={() => setSearchCategory('সব বিভাগ')} className="ml-1 hover:text-red-500 transition-colors">
-                    <X size={12} strokeWidth={3} />
-                  </button>
-                </div>
-              )}
-
               <input 
                 type="text" 
-                placeholder={searchCategory !== 'সব বিভাগ' ? "খুঁজুন..." : "পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                placeholder="পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."
                 className="flex-grow py-1.5 px-3 outline-none text-xs placeholder:text-gray-400 bg-transparent text-gray-800 min-w-[80px]"
               />
 
               <div className="flex items-center gap-1 flex-shrink-0">
-                {/* Filter / Category Select */}
-                <div className="relative flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 transition-colors" title="ক্যাটাগরি ফিল্টার">
-                  <SlidersHorizontal size={16} />
-                  <select 
-                    value={searchCategory}
-                    onChange={(e) => setSearchCategory(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs"
-                  >
-                    <option value="সব বিভাগ">সব বিভাগ (All)</option>
-                    <option value="বিড়াল">বিড়াল</option>
-                    <option value="কুকুর">কুকুর</option>
-                    <option value="পাখি">পাখি</option>
-                    <option value="মাছ">মাছ</option>
-                    <option value="পোষা পশু">পোষা পশু</option>
-                  </select>
-                </div>
-
                 {/* Search Button */}
-                <button className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">
+                <button type="submit" className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">
                   <Search size={15} strokeWidth={2.5} />
                 </button>
               </div>
-            </div>
+            </form>
+
+            {/* Mobile Search Recommendations Dropdown */}
+            {isSearchFocused && searchQuery.trim() !== '' && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white shadow-xl border-t border-gray-100 max-h-[60vh] overflow-y-auto z-50">
+                {searchResults.length > 0 ? (
+                  <>
+                    <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50">
+                      Suggested Products
+                    </div>
+                    {searchResults.map(product => (
+                      <div 
+                        key={product._id || product.id}
+                        onClick={() => navigate(`/product/${product._id || product.id}`)}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-50"
+                      >
+                        <div className="w-10 h-10 bg-white border border-gray-100 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <img src={product.image} alt={product.name} className="max-w-full max-h-full object-contain" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">{product.name}</p>
+                          <div className="flex items-center gap-2 text-[10px]">
+                            <span className="text-brand-mid font-bold">৳{product.priceMin?.toLocaleString()}</span>
+                            {product.category && <span className="text-gray-400 capitalize">{product.category}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <button 
+                      onMouseDown={(e) => { e.preventDefault(); handleSearchSubmit(e); }}
+                      className="w-full text-center text-xs text-brand-primary font-bold py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      See all results for "{searchQuery}"
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-4 py-6 text-center text-gray-500 text-xs">
+                    No products found for "{searchQuery}"
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

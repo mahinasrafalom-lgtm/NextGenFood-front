@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
 /* ─── Category data with subcategories ─── */
@@ -221,12 +221,14 @@ const CategoryItem = ({ cat, activeDropdown, setActiveDropdown }) => {
    CategoryNav — Evenly spaced with dropdowns
    ═══════════════════════════════════════════ */
 const CategoryNav = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
   const navRef = useRef(null);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    const handleScroll = () => setIsScrolled(window.scrollY > 80);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -247,15 +249,12 @@ const CategoryNav = () => {
     };
   }, []);
 
+  const stickyClasses = isHomePage
+    ? `sticky top-0 z-40 transition-all duration-300 ease-in-out ${isScrolled ? 'shadow-[0_10px_30px_rgba(0,0,0,0.2)] bg-black/95 backdrop-blur-md' : 'shadow-none bg-black'}`
+    : 'relative z-40 bg-black';
+
   return (
-    <nav
-      ref={navRef}
-      className={`hidden md:block font-bengali sticky top-[53px] lg:top-[65px] z-40 transition-all duration-500 ${
-        isScrolled
-          ? 'bg-black/95 backdrop-blur-xl shadow-sm border-b border-gray-800'
-          : 'bg-black'
-      }`}
-    >
+    <nav ref={navRef} className={`hidden md:block font-bengali ${stickyClasses}`}>
       <div className="container mx-auto max-w-[1350px] px-2 sm:px-4">
         <ul className="flex items-center justify-between w-full">
           {categories.map((cat) => (

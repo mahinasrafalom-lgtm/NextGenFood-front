@@ -38,10 +38,11 @@ const FARM_CATEGORIES = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: 'cat', label: 'Cat' },
-  { id: 'dog', label: 'Dog' },
-  { id: 'bird', label: 'Bird' },
-  { id: 'fish', label: 'Fish' }
+  { id: 'food', label: 'Food & Treats' },
+  { id: 'medicine', label: 'Medicine & Supplements' },
+  { id: 'accessories', label: 'Accessories' },
+  { id: 'grooming', label: 'Grooming & Hygiene' },
+  { id: 'toys', label: 'Toys' }
 ];
 
 const BRANDS = ['NexGen Veterinary', 'Royal Canin', 'Pedigree', 'Whiskas', 'Purina'];
@@ -115,7 +116,23 @@ const ProductListing = () => {
     if (category) result = result.filter(p => p.subcategory === category);
     if (priceMax < 5000) result = result.filter(p => p.priceMin <= priceMax);
     if (onSaleOnly) result = result.filter(p => !!p.discount);
-    if (searchQuery) result = result.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (brand) result = result.filter(p => p.brand && p.brand.toLowerCase() === brand.toLowerCase());
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(p => {
+        const name = p.name ? p.name.toLowerCase() : '';
+        const brand = p.brand ? p.brand.toLowerCase() : '';
+        const pCat = p.category ? p.category.toLowerCase() : '';
+        const subCat = p.subcategory ? p.subcategory.toLowerCase() : '';
+        const desc = p.description ? p.description.toLowerCase() : '';
+        
+        return name.includes(query) || 
+               brand.includes(query) || 
+               pCat.includes(query) || 
+               subCat.includes(query) || 
+               desc.includes(query);
+      });
+    }
     
     // Sort logic
     if (sortBy === 'Price: Low to High') result.sort((a, b) => a.priceMin - b.priceMin);
@@ -324,7 +341,7 @@ const ProductListing = () => {
             <FilterSection title="Brand">
               <div className="grid grid-cols-2 gap-2">
                 {BRANDS.map(b => {
-                  const active = brand === b;
+                  const active = brand && brand.toLowerCase() === b.toLowerCase();
                   return (
                     <button
                       key={b}

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Minus, Plus, Trash2, ChevronDown, CheckCircle2, Circle, User, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/Toast';
 import { placeOrder } from '../services/api';
+import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
 const Checkout = ({ isLoggedIn }) => {
   const { cartItems, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
@@ -20,7 +23,69 @@ const Checkout = ({ isLoggedIn }) => {
     district: '',
     thana: ''
   });
+  const [billingAddress, setBillingAddress] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    address: '',
+    district: '',
+    thana: ''
+  });
   const [errors, setErrors] = useState({});
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [isCouponOpen, setIsCouponOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      try {
+        const res = await fetch('http://localhost:5005/api/users/addresses', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setSavedAddresses(data);
+          const defaultAddr = data.find(addr => addr.isDefault) || data[0];
+          setSelectedAddressId(defaultAddr._id);
+          applySavedAddress(defaultAddr);
+        }
+      } catch (error) {
+        console.error('Failed to fetch addresses:', error);
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  const applySavedAddress = (addr) => {
+    setShippingAddress({
+      fullName: addr.name || '',
+      phone: addr.phone || '',
+      email: currentUser?.email || '',
+      address: addr.street || '',
+      district: addr.state || '',
+      thana: addr.city || ''
+    });
+  };
+
+  const handleAddressSelect = (e) => {
+    const addrId = e.target.value;
+    setSelectedAddressId(addrId);
+    if (addrId === 'new') {
+      setShippingAddress({
+        fullName: '',
+        phone: '',
+        email: '',
+        address: '',
+        district: '',
+        thana: ''
+      });
+    } else {
+      const addr = savedAddresses.find(a => a._id === addrId);
+      if (addr) applySavedAddress(addr);
+    }
+  };
 
   const handlePurchase = async () => {
     if (cartItems.length === 0) {
@@ -58,10 +123,16 @@ const Checkout = ({ isLoggedIn }) => {
     
     setIsPlacingOrder(true);
     try {
+      const formattedItems = cartItems.map(item => ({
+        ...item,
+        price: item.priceMin || item.price || 0
+      }));
+
       const response = await placeOrder({
-        email: 'john.doe@example.com', // Using standard user identity for now
+        email: currentUser?.email || shippingAddress.email || 'guest@example.com',
         shippingAddress,
-        items: cartItems,
+        billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
+        items: formattedItems,
         total: cartTotal,
         paymentMethod
       });
@@ -194,11 +265,60 @@ const Checkout = ({ isLoggedIn }) => {
               </div>
             </section>
 
+            {/* Saved Addresses Section */}
+            {savedAddresses.length > 0 && (
+              <section className="mb-6">
+                <div className="flex items-center gap-2 mb-3 px-4 sm:px-0">
+                  <div className="w-1 h-4 bg-brand-mid rounded-full"></div>
+                  <h2 className="text-lg font-bold text-[#222831]">Saved Addresses</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 sm:px-0">
+                  {savedAddresses.map(addr => (
+                    <label 
+                      key={addr._id}
+                      className={`flex flex-col p-4 rounded-lg border cursor-pointer transition-colors ${selectedAddressId === addr._id ? 'border-[#f68b1e] bg-[#fdf8f4]' : 'border-gray-200 hover:border-gray-300 bg-[#fdfdfd]'}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <input 
+                          type="radio"
+                          name="savedAddress"
+                          value={addr._id}
+                          checked={selectedAddressId === addr._id}
+                          onChange={handleAddressSelect}
+                          className="accent-[#f68b1e]"
+                        />
+                        <span className="font-bold text-[#f68b1e] text-sm">{addr.type || 'Saved Address'}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-800 mb-1 pl-5">{addr.name}</span>
+                      <span className="text-xs text-gray-500 pl-5 italic line-clamp-2">
+                        {addr.street}, {addr.city} {addr.zip ? `- ${addr.zip}` : ''}, {addr.state}
+                      </span>
+                    </label>
+                  ))}
+                  <label 
+                    className={`flex items-center justify-center p-4 rounded-lg border border-dashed cursor-pointer transition-colors min-h-[100px] ${selectedAddressId === 'new' ? 'border-[#f68b1e] bg-[#fdf8f4]' : 'border-gray-300 hover:border-[#f68b1e] hover:bg-orange-50/10'}`}
+                  >
+                    <input 
+                      type="radio"
+                      name="savedAddress"
+                      value="new"
+                      checked={selectedAddressId === 'new'}
+                      onChange={handleAddressSelect}
+                      className="hidden"
+                    />
+                    <span className={`text-sm font-bold ${selectedAddressId === 'new' ? 'text-[#f68b1e]' : 'text-gray-500'}`}>+ Add New Address</span>
+                  </label>
+                </div>
+              </section>
+            )}
+
             {/* Shipping Address Section */}
             <section>
-              <div className="flex items-center gap-2 mb-3 px-4 sm:px-0">
-                <div className="w-1 h-4 bg-brand-mid rounded-full"></div>
-                <h2 className="text-lg font-bold text-[#222831]">Shipping Address</h2>
+              <div className="flex items-center justify-between mb-3 px-4 sm:px-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-brand-mid rounded-full"></div>
+                  <h2 className="text-lg font-bold text-[#222831]">Shipping Address</h2>
+                </div>
               </div>
               
               <div className="bg-white sm:rounded-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border-y sm:border-x border-gray-100 p-5 md:p-6">
@@ -259,15 +379,15 @@ const Checkout = ({ isLoggedIn }) => {
                       <select 
                         value={shippingAddress.district}
                         onChange={(e) => {
-                          setShippingAddress({...shippingAddress, district: e.target.value});
+                          setShippingAddress({...shippingAddress, district: e.target.value, thana: ''});
                           if (errors.district) setErrors({...errors, district: false});
                         }}
                         className={`w-full border rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer transition-colors ${errors.district ? 'border-red-500 bg-red-50/30' : 'border-gray-200'}`}
                       >
                         <option value="">Select District *</option>
-                        <option value="dhaka">Dhaka</option>
-                        <option value="chittagong">Chittagong</option>
-                        <option value="sylhet">Sylhet</option>
+                        {ALL_DISTRICTS.map(dist => (
+                          <option key={dist.id} value={dist.id}>{dist.label}</option>
+                        ))}
                       </select>
                       <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
@@ -275,12 +395,13 @@ const Checkout = ({ isLoggedIn }) => {
                       <select 
                         value={shippingAddress.thana}
                         onChange={(e) => setShippingAddress({...shippingAddress, thana: e.target.value})}
-                        className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer"
+                        className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+                        disabled={!shippingAddress.district || !THANAS_BY_DISTRICT[shippingAddress.district]}
                       >
                         <option value="">Select Thana (Optional)</option>
-                        <option value="gulshan">Gulshan</option>
-                        <option value="banani">Banani</option>
-                        <option value="dhanmondi">Dhanmondi</option>
+                        {(THANAS_BY_DISTRICT[shippingAddress.district] || []).map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                       </select>
                       <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
@@ -292,18 +413,101 @@ const Checkout = ({ isLoggedIn }) => {
 
             {/* Billing Address Section */}
             <section className="mb-4">
-              <div className="bg-white sm:rounded-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border-y sm:border-x border-gray-100 p-5 flex items-center justify-between cursor-pointer" onClick={() => setBillingSameAsShipping(!billingSameAsShipping)}>
+              <div 
+                className={`bg-[#fafafa] sm:rounded-t-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border-t border-x border-gray-100 p-5 flex items-center justify-between cursor-pointer ${billingSameAsShipping ? 'sm:rounded-b-lg border-b' : 'border-b-0'}`} 
+                onClick={() => setBillingSameAsShipping(!billingSameAsShipping)}
+              >
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-brand-mid rounded-full"></div>
                   <h2 className="text-lg font-bold text-[#222831]">Billing Address</h2>
                 </div>
-                {billingSameAsShipping ? (
-                  <CheckCircle2 size={22} className="text-brand-mid fill-[#f68b1e]/10" />
+                {!billingSameAsShipping ? (
+                  <div className="w-[22px] h-[22px] rounded-full border-2 border-[#f68b1e] bg-transparent flex items-center justify-center shrink-0">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f68b1e" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
                 ) : (
-                  <Circle size={22} className="text-gray-300" />
+                  <div className="w-[22px] h-[22px] rounded-full border-2 border-gray-300 bg-transparent shrink-0"></div>
                 )}
               </div>
-            </section>
+              
+              <div className={`grid transition-all duration-300 ease-in-out ${!billingSameAsShipping ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="overflow-hidden">
+                  <div className="bg-[#fafafa] sm:rounded-b-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border-b sm:border-x border-gray-100 p-5 md:p-6 border-t border-dashed">
+                  <form className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input 
+                        type="text" 
+                        placeholder="Your Full Name *" 
+                        value={billingAddress.fullName}
+                        onChange={(e) => setBillingAddress({...billingAddress, fullName: e.target.value})}
+                        className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] transition-colors"
+                      />
+                      <div className="flex border border-gray-200 rounded overflow-hidden focus-within:border-brand-mid bg-[#fdfdfd] transition-colors">
+                        <div className="bg-gray-100 px-3 md:px-4 py-3 border-r border-gray-200 text-sm text-gray-800 font-medium flex items-center justify-center">
+                           +88
+                        </div>
+                        <input 
+                          type="tel" 
+                          placeholder="017********" 
+                          value={billingAddress.phone}
+                          onChange={(e) => setBillingAddress({...billingAddress, phone: e.target.value})}
+                          className="flex-1 w-full text-sm px-4 py-3 focus:outline-none bg-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    <input 
+                      type="email" 
+                      placeholder="example@gmail.com (Optional)" 
+                      value={billingAddress.email}
+                      onChange={(e) => setBillingAddress({...billingAddress, email: e.target.value})}
+                      className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd]"
+                    />
+
+                    <input 
+                      type="text" 
+                      placeholder="ex: House no. / building / street / area *" 
+                      value={billingAddress.address}
+                      onChange={(e) => setBillingAddress({...billingAddress, address: e.target.value})}
+                      className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] transition-colors"
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="relative">
+                        <select 
+                          value={billingAddress.district}
+                          onChange={(e) => setBillingAddress({...billingAddress, district: e.target.value, thana: ''})}
+                          className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer transition-colors"
+                        >
+                          <option value="">Select District *</option>
+                          {ALL_DISTRICTS.map(dist => (
+                            <option key={dist.id} value={dist.id}>{dist.label}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                      <div className="relative">
+                        <select 
+                          value={billingAddress.thana}
+                          onChange={(e) => setBillingAddress({...billingAddress, thana: e.target.value})}
+                          className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+                          disabled={!billingAddress.district || !THANAS_BY_DISTRICT[billingAddress.district]}
+                        >
+                          <option value="">Select Thana (Optional)</option>
+                          {(THANAS_BY_DISTRICT[billingAddress.district] || []).map(t => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </section>
             
           </div>
 
@@ -371,9 +575,26 @@ const Checkout = ({ isLoggedIn }) => {
             </section>
 
             {/* Coupon Code */}
-            <div className="bg-white rounded-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-gray-100 p-4 flex items-center justify-between cursor-pointer group">
-              <span className="text-sm font-bold text-gray-800">Have any coupon or gift voucher?</span>
-              <ChevronDown size={18} className="text-gray-400 group-hover:text-gray-800 transition-colors" />
+            <div className="bg-white rounded-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+              <div 
+                className="p-4 flex items-center justify-between cursor-pointer group"
+                onClick={() => setIsCouponOpen(!isCouponOpen)}
+              >
+                <span className="text-sm font-bold text-gray-800">Have any coupon or gift voucher?</span>
+                <ChevronDown size={18} className={`text-gray-400 transition-transform duration-300 ${isCouponOpen ? 'rotate-180' : ''}`} />
+              </div>
+              {isCouponOpen && (
+                <div className="px-4 pb-4 border-t border-gray-50 pt-3 flex gap-2 animate-fade-in">
+                  <input 
+                    type="text" 
+                    placeholder="Enter code here" 
+                    className="flex-1 border border-gray-200 rounded text-sm px-3 py-2.5 focus:outline-none focus:border-brand-mid bg-[#fdfdfd]" 
+                  />
+                  <button className="bg-brand-mid text-white px-5 py-2.5 rounded text-sm font-bold hover:bg-[#e07a1b] transition-colors shadow-sm">
+                    Apply
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Order Summary */}

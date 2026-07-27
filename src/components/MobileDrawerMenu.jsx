@@ -14,7 +14,6 @@ const MobileDrawerMenu = ({ isOpen, onClose, isLoggedIn }) => {
 
   const quickLinks = [
     { label: 'About Us', icon: <Info size={18} /> },
-    { label: 'Wishlists', icon: <Heart size={18} /> },
     { label: 'Faqs', icon: <HelpCircle size={18} /> },
     { label: 'Terms & Conditions', icon: <FileText size={18} /> },
   ];

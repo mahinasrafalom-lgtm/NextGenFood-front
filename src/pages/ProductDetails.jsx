@@ -142,10 +142,18 @@ const ProductDetails = ({ isLoggedIn }) => {
       <div className="max-w-[1400px] xl:max-w-[1350px] mx-auto px-0 md:px-8 xl:px-12">
         
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-[13px] text-[#666666] py-[3px] md:py-1.5 px-4 md:px-0 bg-white md:bg-transparent border-b md:border-b-0 border-gray-100">
+        <div className="flex items-center flex-wrap gap-2 text-[13px] text-[#666666] py-[3px] md:py-1.5 px-4 md:px-0 bg-white md:bg-transparent border-b md:border-b-0 border-gray-100 mb-2">
           <Link to="/" className="hover:text-brand-mid transition-colors">Home</Link>
           <ChevronRight size={12} />
           <Link to="/products" className="hover:text-brand-mid transition-colors">Products</Link>
+          {product?.category && (
+            <>
+              <ChevronRight size={12} />
+              <Link to={`/products?category=${encodeURIComponent(product.category.toLowerCase())}`} className="hover:text-brand-mid transition-colors capitalize">
+                {product.category}{product.subcategory ? ` ${product.subcategory}` : ''}
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Main Product Container */}
@@ -153,7 +161,7 @@ const ProductDetails = ({ isLoggedIn }) => {
           <div className="flex flex-col xl:flex-row gap-8 xl:gap-12">
             
             {/* Image Gallery */}
-            <div className="flex flex-row items-start gap-3 md:gap-4 xl:gap-6 w-full xl:w-[40%] max-w-[767px] mx-auto xl:mx-0 flex-shrink-0">
+            <div className="flex flex-row items-start gap-3 md:gap-4 xl:gap-6 w-full xl:w-[40%] max-w-[767px] mx-auto xl:mx-0 flex-shrink-0 xl:sticky xl:top-24">
               
               {/* Thumbnails (Left Column) */}
               <div className="w-[60px] md:w-[80px] lg:w-[90px] flex-shrink-0 flex flex-col gap-3 md:gap-4">
@@ -263,13 +271,31 @@ const ProductDetails = ({ isLoggedIn }) => {
                 </a>
               </div>
 
-              {/* Brand Box */}
-              <div className="border border-gray-200 rounded-lg px-4 py-2.5 inline-flex items-center gap-2 self-start bg-white shadow-sm">
-                <span className="font-bold text-[#222831] text-[15px]">Brand:</span>
-                <span className="text-[#666666] flex items-center gap-1.5 font-medium">
-                   <div className="w-5 h-5 bg-gray-200 rounded-full flex items-center justify-center text-[10px] text-gray-600">✿</div>
-                   {product.brand}
-                </span>
+              {/* Metadata Boxes */}
+              <div className="flex flex-wrap gap-4 mt-2">
+                {/* Brand Box */}
+                {product.brand && (
+                  <div className="border border-gray-200 rounded-lg px-4 py-2.5 inline-flex items-center gap-2 bg-white shadow-sm">
+                    <span className="font-bold text-[#222831] text-[15px]">Brand:</span>
+                    <span className="text-[#666666] flex items-center font-medium ml-1">
+                       {product.brandImage ? (
+                         <img src={product.brandImage} alt={product.brand} className="h-9 sm:h-11 max-w-[120px] object-contain" />
+                       ) : (
+                         product.brand
+                       )}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Category Box */}
+                {product.category && (
+                  <div className="border border-gray-200 rounded-lg px-4 py-2.5 inline-flex items-center gap-2 bg-white shadow-sm">
+                    <span className="font-bold text-[#222831] text-[15px]">Category:</span>
+                    <span className="text-[#666666] font-medium capitalize">
+                       {product.category}{product.subcategory ? ` ${product.subcategory}` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

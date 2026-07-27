@@ -11,7 +11,19 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cartItems');
+      return saved ? JSON.parse(saved) : [];
+    } catch (err) {
+      console.error('Error parsing cart items', err);
+      return [];
+    }
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('cartItems', JSON.stringify(cartItems));
+  }, [cartItems]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const addToCart = (product) => {
