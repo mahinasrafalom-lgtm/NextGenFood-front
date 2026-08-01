@@ -24,6 +24,7 @@ import ConsultationForm from './pages/ConsultationForm';
 import About from './pages/About';
 import Wishlist from './pages/Wishlist';
 import Faq from './pages/Faq';
+import Terms from './pages/Terms';
 import CartDrawer from './components/CartDrawer';
 import Toast from './components/Toast';
 import { useCart } from './context/CartContext';
@@ -79,6 +80,7 @@ function App() {
           isCheckoutPage={true}
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}
+          isLoggedIn={isLoggedIn}
         />
       )}
       
@@ -92,6 +94,7 @@ function App() {
           setMobileSearchOpen={setMobileSearchOpen}
           mobileMenuOpen={mobileMenuOpen}
           setMobileMenuOpen={setMobileMenuOpen}
+          isLoggedIn={isLoggedIn}
         />
       )}
       
@@ -137,6 +140,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/faq" element={<Faq />} />
+        <Route path="/terms" element={<Terms />} />
       </Routes>
 
         {(isHomePage || isProfilePage || isTrackOrderPage) && (

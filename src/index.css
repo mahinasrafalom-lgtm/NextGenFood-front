@@ -123,3 +123,58 @@
   border-radius: 9999px;
   border-color: #F28522;
 }
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  .translate-z-10 {
+    transform: translateZ(10px);
+  }
+}
+
+@keyframes float-3d {
+  0%, 100% {
+    transform: translateY(0) rotateX(0deg) rotateY(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+  }
+  50% {
+    transform: translateY(0) rotateX(0deg) rotateY(10deg);
+  }
+  75% {
+    transform: translateY(10px) rotateX(-5deg) rotateY(5deg);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: translateZ(-10px) rotate(0deg);
+  }
+  to {
+    transform: translateZ(-10px) rotate(360deg);
+  }
+}
+
+@keyframes spin-slow-reverse {
+  from {
+    transform: translateZ(-20px) rotate(360deg);
+  }
+  to {
+    transform: translateZ(-20px) rotate(0deg);
+  }
+}
+
+.animate-float-3d {
+  animation: float-3d 6s ease-in-out infinite;
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+.animate-spin-slow-reverse {
+  animation: spin-slow-reverse 12s linear infinite;
+}

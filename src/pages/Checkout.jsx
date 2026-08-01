@@ -139,7 +139,7 @@ const Checkout = ({ isLoggedIn }) => {
       showToast(`Order placed successfully! Order ID: ${response.orderId}`);
       setTimeout(() => {
         clearCart();
-        navigate('/order-confirmation');
+        navigate('/order-confirmation', { state: { orderId: response.orderId } });
         window.scrollTo(0, 0);
       }, 1500);
     } catch (error) {

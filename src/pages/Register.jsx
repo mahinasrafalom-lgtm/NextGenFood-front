@@ -36,7 +36,7 @@ const Register = () => {
     try {
       setError('');
       setLoading(true);
-      await loginWithGoogle();
+      await loginWithGoogle(true);
       showToast("Signed up with Google successfully!");
       navigate('/profile');
       window.scrollTo(0, 0);

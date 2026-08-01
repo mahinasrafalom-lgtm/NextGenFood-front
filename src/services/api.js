@@ -150,3 +150,12 @@ export const syncUserProfile = async (userData, token) => {
   }
   return await res.json();
 };
+export const cancelOrder = async (id, reason) => {
+  const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(id)}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'Cancelled', cancelReason: reason })
+  });
+  if (!res.ok) throw new Error('Failed to cancel order');
+  return await res.json();
+};

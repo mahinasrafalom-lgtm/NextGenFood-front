@@ -1,22 +1,32 @@
 import React from 'react';
-import { X, User, ChevronRight, Info, Heart, HelpCircle, FileText } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { X, User, ChevronRight, Info, HelpCircle, FileText } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const MobileDrawerMenu = ({ isOpen, onClose, isLoggedIn }) => {
+  const navigate = useNavigate();
+
+  // Actual product categories instead of placeholder data
   const menuItems = [
-    { label: 'Combos', hasSubMenu: true },
-    { label: 'Offer Zone', hasSubMenu: false },
-    { label: 'Honey', hasSubMenu: false },
-    { label: 'Dates & Spices', hasSubMenu: true },
-    { label: 'Cat Food', hasSubMenu: true },
-    { label: 'Dog Food', hasSubMenu: true },
+    { id: 'cat', label: 'Cats' },
+    { id: 'dog', label: 'Dogs' },
+    { id: 'bird', label: 'Birds' },
+    { id: 'fish', label: 'Fish' },
+    { id: 'pets', label: 'Other Pets' },
+    { id: 'goat', label: 'Goats' },
+    { id: 'rabbit', label: 'Rabbits' },
+    { id: 'medicine', label: 'Pharmacy' },
   ];
 
   const quickLinks = [
-    { label: 'About Us', icon: <Info size={18} /> },
-    { label: 'Faqs', icon: <HelpCircle size={18} /> },
-    { label: 'Terms & Conditions', icon: <FileText size={18} /> },
+    { label: 'About Us', icon: <Info size={18} />, path: '/about' },
+    { label: 'Faqs', icon: <HelpCircle size={18} />, path: '/faq' },
+    { label: 'Terms & Conditions', icon: <FileText size={18} />, path: '/terms' },
   ];
+
+  const handleCategoryClick = (categoryId) => {
+    onClose();
+    navigate(`/products?animalType=${categoryId}`);
+  };
 
   return (
     <>
@@ -63,10 +73,11 @@ const MobileDrawerMenu = ({ isOpen, onClose, isLoggedIn }) => {
             {menuItems.map((item, idx) => (
               <button 
                 key={idx}
-                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-gray-50 active:bg-gray-100 transition-colors last:border-0"
+                onClick={() => handleCategoryClick(item.id)}
+                className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-50 hover:bg-brand-section active:bg-gray-100 transition-colors last:border-0 group"
               >
-                <span className="font-medium text-[15px] text-gray-800">{item.label}</span>
-                {item.hasSubMenu && <ChevronRight size={18} className="text-gray-400" />}
+                <span className="font-medium text-[15px] text-gray-800 group-hover:text-brand-mid transition-colors">{item.label}</span>
+                <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-mid transition-colors group-hover:translate-x-1" />
               </button>
             ))}
           </div>
@@ -76,8 +87,9 @@ const MobileDrawerMenu = ({ isOpen, onClose, isLoggedIn }) => {
             <h4 className="px-5 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Quick Links</h4>
             {quickLinks.map((link, idx) => (
               <Link 
-                to="#" 
+                to={link.path}
                 key={idx}
+                onClick={onClose}
                 className="w-full flex items-center gap-4 px-5 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors text-gray-600 hover:text-brand-mid"
               >
                 <span className="text-gray-400 flex-shrink-0">{link.icon}</span>

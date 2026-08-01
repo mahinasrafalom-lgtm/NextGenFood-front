@@ -34,7 +34,7 @@ const Login = () => {
     try {
       setError('');
       setLoading(true);
-      await loginWithGoogle();
+      await loginWithGoogle(false);
       showToast("Logged in with Google successfully!");
       navigate('/profile');
       window.scrollTo(0, 0);

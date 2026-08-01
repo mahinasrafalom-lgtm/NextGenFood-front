@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, ShoppingBag, MessageCircle, Phone, Star, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import ProductCard from '../components/ProductCard';
 import { fetchProductById } from '../services/api';
+import { showToast } from '../components/Toast';
 
 // Removed Mock data
 
 const ProductDetails = ({ isLoggedIn }) => {
   const { id } = useParams();
   const { addToCart, openCartDrawer } = useCart();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const [product, setProduct] = useState(null);
@@ -74,16 +77,19 @@ const ProductDetails = ({ isLoggedIn }) => {
     setActiveImage(product.images[(activeIndex + 1) % product.images.length]);
   };
 
-  const handleReviewSubmit = async () => {
+  const handleReviewSubmit = async (e) => {
+    if (e) e.preventDefault();
     if (reviewRating === "Select One" || !reviewComment.trim()) {
-      alert("Please provide both a rating and a comment.");
+      showToast("Please provide both a rating and a comment.");
       return;
     }
     setSubmittingReview(true);
     try {
       const api = await import('../services/api');
+      const userName = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || "User";
       const res = await api.addProductReview(product._id || product.id, {
-        user: "User",
+        user: userName,
+        userEmail: currentUser?.email,
         rating: parseInt(reviewRating),
         comment: reviewComment
       });
@@ -94,10 +100,10 @@ const ProductDetails = ({ isLoggedIn }) => {
         });
         setReviewComment("");
         setReviewRating("Select One");
-        alert("Review submitted successfully!");
+        showToast("Review submitted successfully!");
       }
     } catch (error) {
-      alert(error.message);
+      showToast(error.message);
     } finally {
       setSubmittingReview(false);
     }
@@ -401,6 +407,7 @@ const ProductDetails = ({ isLoggedIn }) => {
                     
                     <div className="flex justify-end">
                       <button 
+                        type="button"
                         onClick={handleReviewSubmit}
                         disabled={submittingReview}
                         className="bg-[#4a4a4a] hover:bg-[#333] disabled:opacity-50 text-white px-7 py-3 rounded-[4px] text-[13px] font-bold tracking-wide transition-colors"

@@ -8,7 +8,7 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
   const searchRef = useRef(null);
   const moreMenuRef = useRef(null);
   const navigate = useNavigate();
-  const [searchCategory, setSearchCategory] = useState('সব বিভাগ');
+  const [searchCategory, setSearchCategory] = useState('All Categories');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -44,15 +44,14 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
     if (!searchQuery.trim()) return [];
     
     const query = searchQuery.toLowerCase().trim();
-    const isGlobal = searchCategory === 'সব বিভাগ';
+    const isGlobal = searchCategory === 'All Categories';
     
     const results = allProducts.filter(p => {
       // If a specific animal category is selected in the dropdown, restrict search to it
       if (!isGlobal) {
         const pCat = p.category ? p.category.toLowerCase() : '';
-        const sCat = searchCategory === 'পোষা পশু' ? 'pet' : searchCategory.toLowerCase(); // Map Bengali to English logic if needed, but since data is English:
-        // Actually searchCategory maps to Bengali like "বিড়াল", but our data has "cat"
-        const categoryMap = { 'বিড়াল': 'cat', 'কুকুর': 'dog', 'পাখি': 'bird', 'মাছ': 'fish', 'পোষা পশু': 'pet' };
+        const sCat = searchCategory === 'Other Pets' ? 'pet' : searchCategory.toLowerCase(); 
+        const categoryMap = { 'Cats': 'cat', 'Dogs': 'dog', 'Birds': 'bird', 'Fish': 'fish', 'Other Pets': 'pet' };
         const mappedCat = categoryMap[searchCategory];
         if (mappedCat && pCat !== mappedCat) return false;
       }
@@ -111,9 +110,9 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
     : `relative z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50`;
 
   return (
-    <header className={`font-bengali w-full overflow-visible ${stickyClasses}`}>
+    <header className={`w-full overflow-visible ${stickyClasses}`}>
       {/* Row 1: Logo and Icons */}
-      <div className="container mx-auto px-3 py-2.5 sm:py-3 max-w-[1350px] flex items-center justify-between gap-2 lg:gap-8 w-full relative">
+      <div className="container mx-auto px-3 py-3 sm:py-4 max-w-[1350px] flex items-center justify-between gap-2 lg:gap-8 w-full relative">
         
         {/* Left: Mobile Menu Button */}
         <div className="flex items-center md:hidden">
@@ -129,13 +128,13 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
         <Link to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 z-10">
           
           {/* Uploaded Logo Image */}
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105" />
+          <img src="/logo.png" alt="Logo" className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105" />
           
           <div className="flex flex-col justify-center">
-            <h1 className="text-[17px] sm:text-lg lg:text-[22px] font-bold font-sans text-gray-900 leading-none tracking-tight">
+            <h1 className="text-[19px] sm:text-xl lg:text-[24px] font-bold font-sans text-gray-900 leading-none tracking-tight">
               NexGen <span className="text-gray-700">Veterinary</span>
             </h1>
-            <p className="hidden md:block text-[10px] lg:text-[11px] text-gray-500 font-sans tracking-wide mt-0.5">Happy Pets, Healthy Lives</p>
+            <p className="hidden md:block text-[11px] lg:text-[12px] text-gray-500 font-sans tracking-wide mt-0.5">Happy Pets, Healthy Lives</p>
           </div>
         </Link>
 
@@ -144,7 +143,7 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
           <div className="flex-grow max-w-md hidden md:flex flex-col relative z-50">
             <form 
               onSubmit={handleSearchSubmit}
-              className={`flex items-center border rounded-full bg-white transition-all duration-200 ml-4 lg:ml-0 pl-1 pr-1 py-1 relative z-20 ${isSearchFocused ? 'border-brand-mid ring-1 ring-brand-mid' : 'border-gray-300'}`}
+              className={`flex items-center border rounded-full bg-white transition-all duration-200 ml-4 lg:ml-0 pl-2 pr-1.5 py-1.5 relative z-20 ${isSearchFocused ? 'border-brand-mid ring-1 ring-brand-mid' : 'border-gray-300'}`}
             >
               <input 
                 type="text" 
@@ -152,14 +151,14 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                placeholder="পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."
+                placeholder="Search products, brands, or medicine..."
                 className="flex-grow py-1.5 px-3 outline-none text-sm placeholder:text-gray-400 bg-transparent text-gray-800 min-w-[120px]"
               />
               
               <div className="flex items-center gap-1">
                 {/* Search Button */}
-                <button type="submit" className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">
-                  <Search size={16} strokeWidth={2.5} />
+                <button type="submit" className="text-white bg-brand-mid hover:bg-brand-dark w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow-sm">
+                  <Search size={18} strokeWidth={2.5} />
                 </button>
               </div>
             </form>
@@ -305,17 +304,15 @@ const Header = ({ isCheckoutPage, cartCount, lang, setLang, mobileSearchOpen, se
               onSubmit={handleSearchSubmit}
               className={`flex items-center border rounded-full bg-white transition-all pl-1 pr-1 py-1 ${isSearchFocused ? 'border-brand-mid ring-1 ring-brand-mid' : 'border-gray-300'}`}
             >
-              
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                placeholder="পণ্য, ব্র্যান্ড বা মেডিসিন খুঁজুন..."
+                placeholder="Search products, brands, or medicine..."
                 className="flex-grow py-1.5 px-3 outline-none text-xs placeholder:text-gray-400 bg-transparent text-gray-800 min-w-[80px]"
               />
-
               <div className="flex items-center gap-1 flex-shrink-0">
                 {/* Search Button */}
                 <button type="submit" className="text-white bg-brand-mid hover:bg-brand-dark w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm">

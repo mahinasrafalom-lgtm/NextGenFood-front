@@ -9,19 +9,34 @@ import {
 } from 'lucide-react';
 import { showToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
 const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const navigate = useNavigate();
   const { currentUser, logout, changePassword, updateProfile } = useAuth();
+  const { cartCount } = useCart();
   const [profileData, setProfileData] = useState({ name: '', address: '', phone: '', email: '' });
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({ 'orders-group': true });
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [replyMessage, setReplyMessage] = useState('');
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
   
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.sidebar-nav-container')) {
+        setExpandedMenus({});
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Phase 2 State
   const [wishlist, setWishlist] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -32,7 +47,6 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const [orders, setOrders] = useState([]);
 
   // Phase 4 State
-  const [tickets, setTickets] = useState([]);
   const [coupons, setCoupons] = useState({ available: [], applied: [] });
   const [reviews, setReviews] = useState([]);
   const [newTicket, setNewTicket] = useState({ title: '', topic: '', description: '', photoUrl: '' });
@@ -82,10 +96,42 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           .then(res => res.json())
           .then(data => setCoupons(data || { available: [], applied: [] })).catch(console.error);
 
-        // Fetch Reviews
+        // Fetch Reviews with fallback for embedded product reviews
         fetch('http://localhost:5005/api/reviews/my-reviews', { headers: { Authorization: `Bearer ${token}` }})
           .then(res => res.json())
-          .then(data => setReviews(data || [])).catch(console.error);
+          .then(async data => {
+            let userReviews = Array.isArray(data) ? data : [];
+            try {
+              const api = await import('../services/api');
+              const allProducts = await api.fetchProducts();
+              const embedded = [];
+              const userName = currentUser.displayName || currentUser.name || currentUser.email?.split('@')[0] || "User";
+              allProducts.forEach(p => {
+                if (p.reviews && p.reviews.length > 0) {
+                  p.reviews.forEach(r => {
+                    if (r.user === userName || r.userEmail === currentUser.email) {
+                      const exists = userReviews.some(sr => 
+                        sr.productId?._id === (p._id || p.id) && sr.comment === r.comment
+                      );
+                      if (!exists) {
+                        embedded.push({
+                          _id: r._id || Math.random().toString(),
+                          productId: { _id: p._id || p.id, name: p.name, image: p.image, images: p.images, price: p.price },
+                          rating: r.rating,
+                          comment: r.comment,
+                          createdAt: r.createdAt || new Date()
+                        });
+                      }
+                    }
+                  });
+                }
+              });
+              setReviews([...userReviews, ...embedded]);
+            } catch (err) {
+              console.error("Fallback review fetch error:", err);
+              setReviews(userReviews);
+            }
+          }).catch(console.error);
       }
     }
   }, [currentUser]);
@@ -124,6 +170,35 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       showToast('Ticket created successfully!');
     } catch(err) {
       showToast('Failed to create ticket');
+    }
+  };
+
+  const handleTicketReply = async () => {
+    if (!replyMessage.trim() || !selectedTicket) return;
+    const token = localStorage.getItem('authToken');
+    try {
+      const res = await fetch(`http://localhost:5005/api/tickets/${selectedTicket._id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          responseMessage: replyMessage.trim(), 
+          sender: 'user' 
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to reply');
+        return;
+      }
+      setTickets(tickets.map(t => t._id === data._id ? data : t));
+      setSelectedTicket(data);
+      setReplyMessage('');
+    } catch (err) {
+      console.error('Error replying to ticket:', err);
+      showToast('Error replying to ticket');
     }
   };
 
@@ -238,7 +313,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         {/* Items in cart */}
         <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-purple-50/50 to-purple-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">0</p>
+            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{cartCount}</p>
             <p className="text-[13px] sm:text-sm font-medium text-gray-500">Items in cart</p>
           </div>
           <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
@@ -264,7 +339,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         {/* Opened Tickets */}
         <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-cyan-50/50 to-cyan-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">0</p>
+            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{tickets.length}</p>
             <p className="text-[13px] sm:text-sm font-medium text-gray-500">Opened Tickets</p>
           </div>
           <div className="relative w-10 h-10 sm:w-12 sm:h-12 shrink-0">
@@ -276,26 +351,106 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
             </div>
           </div>
         </div>
+
+        {/* Coupons */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-amber-50/50 to-amber-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+          <div>
+            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{Array.isArray(coupons?.available) ? coupons.available.length : 0}</p>
+            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Coupons</p>
+          </div>
+          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
+            <Ticket size={20} className="text-white" />
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
         <div className="bg-[#2D2D2D] px-4 py-3 flex justify-between items-center">
           <h3 className="text-white font-bold text-sm tracking-wide">Recent orders</h3>
-          <button className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">All orders</button>
+          <button onClick={() => setActiveTab('orders')} className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">All orders</button>
         </div>
-        <div className="bg-gray-50 py-12 flex justify-center items-center">
-          <p className="text-gray-500 font-bold text-sm">No Order Found</p>
-        </div>
+        {orders.length === 0 ? (
+          <div className="bg-gray-50 py-12 flex justify-center items-center">
+            <p className="text-gray-500 font-bold text-sm">No Order Found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm font-bold border-b border-gray-200">
+                  <th className="p-4 whitespace-nowrap">Order ID</th>
+                  <th className="p-4 whitespace-nowrap">Date & Time</th>
+                  <th className="p-4 whitespace-nowrap">Status</th>
+                  <th className="p-4 whitespace-nowrap">Quantity</th>
+                  <th className="p-4 whitespace-nowrap">Amount</th>
+                  <th className="p-4 text-center whitespace-nowrap">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.slice(0, 3).map(order => (
+                  <tr key={order.id || order._id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="p-4 font-bold text-gray-900">#{order.id || (order._id && order._id.slice(-6)) || 'N/A'}</td>
+                    <td className="p-4 text-gray-600">
+                      {order.date || (order.createdAt && new Date(order.createdAt).toLocaleDateString()) || 'N/A'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                        order.status === 'Processing' ? 'bg-blue-100 text-blue-700' :
+                        'bg-orange-100 text-[#f68b1e]'
+                      }`}>
+                        {order.status || 'Order Placed'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-600">{order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0} items</td>
+                    <td className="p-4 font-bold text-gray-900">৳{order.totalAmount || (order.total && order.total.replace(/\D/g,'')) || 0}</td>
+                    <td className="p-4 text-center">
+                      <button className="text-blue-600 font-bold hover:underline text-sm" onClick={() => navigate('/order-confirmation', { state: { orderId: order.id || order._id } })}>
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
         <div className="bg-[#2D2D2D] px-4 py-3 flex justify-between items-center">
-          <h3 className="text-white font-bold text-sm tracking-wide">Wishlist items</h3>
-          <button className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">View all</button>
+          <h3 className="text-white font-bold text-sm tracking-wide">Available Coupons</h3>
+          <button onClick={() => setActiveTab('promo')} className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">View all</button>
         </div>
-        <div className="bg-white py-12 flex justify-center items-center">
-          <p className="text-gray-500 font-bold text-sm">No Product in Wishlist</p>
-        </div>
+        {(!coupons?.available || coupons.available.length === 0) ? (
+          <div className="bg-white py-12 flex justify-center items-center">
+            <p className="text-gray-500 font-bold text-sm">No coupons available right now</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+            {coupons.available.slice(0, 4).map((coupon) => (
+              <div key={coupon._id} className="flex flex-col sm:flex-row gap-4 p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow relative cursor-pointer" onClick={() => setActiveTab('promo')}>
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                  <Ticket size={24} />
+                </div>
+                <div className="flex-1 w-full">
+                  <div className="flex justify-between items-start w-full">
+                    <div>
+                      <h4 className="font-bold text-gray-900 text-sm">{coupon.code}</h4>
+                      <p className="text-gray-500 text-xs mt-1">{coupon.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-block bg-blue-100 text-blue-700 font-bold text-xs px-2 py-1 rounded-full whitespace-nowrap">
+                        {coupon.discountType === 'percentage' ? `${coupon.discount}% OFF` : `৳${coupon.discount} OFF`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
     );
@@ -339,15 +494,16 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                         order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
                         order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                        order.status === 'Processing' ? 'bg-blue-100 text-blue-700' :
                         'bg-orange-100 text-[#f68b1e]'
                       }`}>
-                        {order.status || 'Processing'}
+                        {order.status || 'Order Placed'}
                       </span>
                     </td>
                     <td className="p-4 text-gray-600">{order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0} items</td>
                     <td className="p-4 font-bold text-gray-900">৳{order.totalAmount || order.total?.replace(/\D/g,'') || 0}</td>
                     <td className="p-4 text-center">
-                      <button className="text-blue-600 font-bold hover:underline text-sm" onClick={() => navigate('/order-confirmation')}>
+                      <button className="text-blue-600 font-bold hover:underline text-sm" onClick={() => navigate('/order-confirmation', { state: { orderId: order.id || order._id } })}>
                         View Details
                       </button>
                     </td>
@@ -732,11 +888,15 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           <EmptyState title="You haven't reviewed any products yet" />
         ) : (
           reviews.map((review) => (
-            <div key={review._id} className="border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+            <div 
+              key={review._id} 
+              onClick={() => navigate(`/product/${review.productId?._id || review.productId?.id}`)}
+              className="border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors cursor-pointer"
+            >
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                 <div className="w-16 h-16 bg-gray-50 rounded flex items-center justify-center shrink-0 hidden sm:flex">
-                  {review.productId?.images?.[0] ? (
-                    <img src={review.productId.images[0]} alt={review.productId.name} className="w-full h-full object-cover rounded" />
+                  {(review.productId?.images?.[0] || review.productId?.image) ? (
+                    <img src={review.productId?.images?.[0] || review.productId?.image} alt={review.productId?.name} className="w-full h-full object-cover rounded" />
                   ) : (
                     <Package size={20} className="text-gray-400" />
                   )}
@@ -853,11 +1013,11 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
               </tr>
             ) : (
               tickets.map(ticket => (
-                <tr key={ticket._id} className="border-t border-gray-100 hover:bg-gray-50">
+                <tr key={ticket._id} onClick={() => setSelectedTicket(ticket)} className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="p-4 font-bold text-gray-900">#{ticket._id.slice(-6).toUpperCase()}</td>
                   <td className="p-4 text-gray-600 font-medium">{ticket.title}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 font-bold rounded text-xs ${
+                    <span className={`px-2 py-1 font-bold rounded text-[10px] uppercase tracking-wider ${
                       ticket.status === 'Open' ? 'bg-orange-50 text-orange-600' :
                       ticket.status === 'Closed' ? 'bg-gray-50 text-gray-600' :
                       'bg-blue-50 text-blue-600'
@@ -872,6 +1032,89 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Ticket Details Modal for User */}
+      {selectedTicket && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Ticket #{selectedTicket._id.slice(-6).toUpperCase()}</h2>
+                <p className="text-sm text-gray-500">Status: <span className="font-bold text-brand-primary">{selectedTicket.status}</span></p>
+              </div>
+              <button onClick={() => setSelectedTicket(null)} className="text-gray-400 hover:text-gray-600 bg-white p-2 rounded-full shadow-sm">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
+              {/* Original User Message */}
+              <div className="flex gap-4 flex-row-reverse">
+                <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-white shadow-sm flex items-center justify-center shrink-0">
+                  <User size={18} className="text-blue-600" />
+                </div>
+                <div className="bg-brand-primary text-white p-4 rounded-2xl rounded-tr-none shadow-sm max-w-[80%]">
+                  <h3 className="font-bold mb-1 text-[15px]">{selectedTicket.title}</h3>
+                  {selectedTicket.description && (
+                    <p className="text-white/95 text-sm whitespace-pre-wrap leading-relaxed">{selectedTicket.description}</p>
+                  )}
+                  {selectedTicket.photoUrl && (
+                    <div className="mt-3 bg-white/10 p-1 rounded-xl">
+                      <img src={selectedTicket.photoUrl} alt="Attachment" className="max-w-full h-auto max-h-48 rounded-lg" />
+                    </div>
+                  )}
+                  <span className="text-[10px] text-white/70 mt-2 block text-right">{new Date(selectedTicket.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Responses */}
+              {selectedTicket.responses && selectedTicket.responses.map((resp, idx) => (
+                <div key={idx} className={`flex gap-4 ${resp.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center shrink-0 ${resp.sender === 'admin' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {resp.sender === 'admin' ? (
+                      <span className="text-lg" title="Support">🐾</span>
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <div className={`p-4 rounded-2xl max-w-[80%] shadow-sm ${resp.sender === 'user' ? 'bg-brand-primary text-white rounded-tr-none' : 'bg-white border border-gray-100 rounded-tl-none'}`}>
+                    <p className={`text-sm whitespace-pre-wrap leading-relaxed ${resp.sender === 'admin' ? 'text-gray-800' : 'text-white/95'}`}>
+                      {resp.message}
+                    </p>
+                    <span className={`text-[10px] mt-2 block ${resp.sender === 'user' ? 'text-white/70 text-right' : 'text-gray-400'}`}>
+                      {new Date(resp.date).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedTicket.status !== 'Closed' && (
+              <div className="p-4 border-t border-gray-100 bg-white flex items-end gap-3">
+                <textarea 
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  placeholder="Reply to support..."
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-brand-primary resize-none min-h-[60px]"
+                ></textarea>
+                <button 
+                  onClick={handleTicketReply}
+                  className="bg-[#2D2D2D] hover:bg-black text-white p-3 rounded-xl font-bold"
+                >
+                  Send
+                </button>
+              </div>
+            )}
+            
+            {selectedTicket.status === 'Closed' && (
+              <div className="p-4 border-t border-gray-100 bg-gray-50 text-center text-gray-500 text-sm font-medium">
+                This ticket has been closed. You cannot send new messages.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
     );
   };
@@ -1012,7 +1255,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-white shadow-lg lg:shadow-none lg:border lg:border-gray-100 lg:rounded-2xl overflow-hidden w-72">
+    <div className="sidebar-nav-container flex flex-col h-full bg-white shadow-lg lg:shadow-none lg:border lg:border-gray-100 lg:rounded-2xl overflow-hidden w-72">
       {/* User Header */}
       <div className="bg-gray-900 p-8 text-white relative">
         <h2 className="text-2xl font-bold mb-1">{profileData.name || 'User'}</h2>
@@ -1035,6 +1278,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                     } else {
                       setActiveTab(link.id);
                       setIsSidebarOpen(false);
+                      setExpandedMenus({});
                     }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-sm font-bold ${

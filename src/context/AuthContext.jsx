@@ -6,7 +6,8 @@ import {
   signOut,
   updateProfile,
   updatePassword,
-  signInWithPopup
+  signInWithPopup,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { syncUserProfile } from '../services/api';
@@ -44,8 +45,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Google Login
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (isSignup = false) => {
     const userCredential = await signInWithPopup(auth, googleProvider);
+    const { isNewUser } = getAdditionalUserInfo(userCredential);
+
+    if (!isSignup && isNewUser) {
+      // If trying to log in but account doesn't exist, delete the auto-created Firebase account
+      await userCredential.user.delete();
+      await signOut(auth);
+      throw new Error("Account not found. Please sign up first.");
+    }
+
+    if (isSignup && !isNewUser) {
+      // If trying to sign up but account already exists, prevent it
+      await signOut(auth);
+      throw new Error("Account already exists. Please log in.");
+    }
+
     const user = userCredential.user;
     const token = await user.getIdToken();
     // Sync with backend (in case it's a first time login, it will create profile)

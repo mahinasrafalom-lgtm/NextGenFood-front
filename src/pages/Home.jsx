@@ -7,6 +7,8 @@ import BrandsSection from '../components/BrandsSection';
 import ProductSection from '../components/ProductSection';
 import { fetchStorefrontData, fetchTopSales } from '../services/api';
 
+import AnimatedLoader from '../components/AnimatedLoader';
+
 // Removed mock feed categories and product data
 
 const Home = () => {
@@ -20,14 +22,16 @@ const Home = () => {
     const loadHomeData = async () => {
       setLoading(true);
       try {
-        const [storefront, sales, products] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchStorefrontData(),
           fetchTopSales(),
           import('../services/api').then(m => m.fetchProducts())
         ]);
-        setStorefrontData(storefront);
-        setTopSales(sales);
-        setAllProducts(products || []);
+        
+        // Use fulfilled values or fallback to defaults if a promise was rejected
+        setStorefrontData(results[0].status === 'fulfilled' ? (results[0].value || {}) : {});
+        setTopSales(results[1].status === 'fulfilled' ? (results[1].value || []) : []);
+        setAllProducts(results[2].status === 'fulfilled' ? (results[2].value || []) : []);
       } catch (error) {
         console.error("Failed to load homepage data", error);
       } finally {
@@ -38,12 +42,7 @@ const Home = () => {
   }, []);
 
   if (loading || !storefrontData) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-10 h-10 animate-spin text-brand-primary mb-4" />
-        <p className="text-gray-500 font-medium">Loading store experience...</p>
-      </div>
-    );
+    return <AnimatedLoader />;
   }
 
   // Dynamically generate all unique Category + Subcategory combinations from products

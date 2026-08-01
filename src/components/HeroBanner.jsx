@@ -1,8 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Truck, HeadphonesIcon, ShieldCheck, HeartPulse, Stethoscope, Package, ChevronLeft, ChevronRight, Cat, Dog, Fish, Bird, Star, Award, Gift, Clock, CreditCard, ThumbsUp, ShoppingBag, Zap, Sparkles, Smile, Activity } from 'lucide-react';
 
 const HeroBanner = ({ banners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const navigate = useNavigate();
+
+  const getButtonLink = (text) => {
+    const lowerText = (text || '').toLowerCase();
+    
+    // Check for consultation keywords (English & Bangla)
+    if (
+      lowerText.includes('পরামর্শ') || 
+      lowerText.includes('consult') || 
+      lowerText.includes('advice') ||
+      lowerText.includes('doctor') ||
+      lowerText.includes('ডাক্তার')
+    ) {
+      return 'open-consultation-modal';
+    }
+    
+    // Default to products
+    return '/products';
+  };
+
+  const handleButtonClick = (action) => {
+    if (action === 'open-consultation-modal') {
+      window.dispatchEvent(new CustomEvent('openConsultationModal'));
+    } else {
+      navigate(action);
+    }
+  };
 
   const IconMap = {
     Stethoscope, HeartPulse, ShieldCheck, HeadphonesIcon, Truck, CheckCircle2, Package,
@@ -96,10 +124,11 @@ const HeroBanner = ({ banners }) => {
                     {/* Button */}
                     <div className={`transition-all duration-700 ease-out delay-[400ms] ${isActive ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'}`}>
                       <button 
-                        className="transition-all duration-300 font-medium py-1 px-2.5 sm:py-2.5 sm:px-6 lg:py-2.5 lg:px-8 rounded sm:rounded-lg inline-flex items-center gap-1 sm:gap-2 text-[8px] sm:text-sm lg:text-base hover:opacity-90"
+                        onClick={() => handleButtonClick(getButtonLink(slide.buttonText || 'শপ করুন / Shop Now'))}
+                        className="transition-all duration-300 font-bengali font-medium py-1 px-2.5 sm:py-2.5 sm:px-6 lg:py-2.5 lg:px-8 rounded sm:rounded-lg inline-flex items-center gap-1 sm:gap-2 text-[8px] sm:text-sm lg:text-base hover:opacity-90"
                         style={{ backgroundColor: slide.buttonBgColor || '#0891B2', color: slide.buttonTextColor || '#F9F9F9' }}
                       >
-                        {slide.buttonText} <ArrowRight className="w-2.5 h-2.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" style={{ color: slide.buttonArrowColor || '#F9F9F9' }} />
+                        {slide.buttonText || 'শপ করুন / Shop Now'} <ArrowRight className="w-2.5 h-2.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" style={{ color: slide.buttonArrowColor || '#F9F9F9' }} />
                       </button>
                     </div>
                   </div>

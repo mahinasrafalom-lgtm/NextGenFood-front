@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Package, Truck, CheckCircle, MapPin, Calendar, CreditCard, ChevronRight, History, PackageOpen } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle, MapPin, Calendar, CreditCard, ChevronRight, History, PackageOpen, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { trackOrder, getUserOrders } from '../services/api';
+import { trackOrder, getUserOrders, cancelOrder } from '../services/api';
+import CancelOrderModal from '../components/CancelOrderModal';
+import CancelledOrderHero from '../components/CancelledOrderHero';
 import { useAuth } from '../context/AuthContext';
 
 const TrackOrder = () => {
@@ -11,6 +13,8 @@ const TrackOrder = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [orderData, setOrderData] = useState(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [loadingCancel, setLoadingCancel] = useState(false);
   
   const [recentOrders, setRecentOrders] = useState([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
@@ -52,6 +56,7 @@ const TrackOrder = () => {
 
   // Status mapping for Stepper
   const statusSteps = [
+    { label: 'Order Placed', icon: FileText },
     { label: 'Processing', icon: Package },
     { label: 'Shipped', icon: Truck },
     { label: 'Delivered', icon: CheckCircle }
@@ -59,12 +64,26 @@ const TrackOrder = () => {
 
   const getStepIndex = (status) => {
     const s = (status || '').toLowerCase();
-    if (s === 'delivered') return 2;
-    if (s === 'shipped') return 1;
-    return 0; // default to Processing
+    if (s === 'delivered') return 3;
+    if (s === 'shipped') return 2;
+    if (s === 'processing') return 1;
+    return 0; // default to Order Placed
   };
 
   const currentStep = orderData ? getStepIndex(orderData.status) : 0;
+
+  const handleCancelOrder = async (reason) => {
+    try {
+      setLoadingCancel(true);
+      const res = await cancelOrder(orderData.id, reason);
+      setOrderData(res.order || { ...orderData, status: 'Cancelled' });
+      setIsCancelModalOpen(false);
+    } catch (err) {
+      setError('Failed to cancel the order. Please try again or contact support.');
+    } finally {
+      setLoadingCancel(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-brand-light font-sans py-10 px-4">
@@ -184,15 +203,31 @@ const TrackOrder = () => {
                   )}
                 </div>
               </div>
-              <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 inline-flex items-center gap-2 shadow-sm font-semibold text-brand-dark">
-                Status: <span className="text-brand-mid capitalize">{orderData.status}</span>
+              <div className="flex flex-col items-end gap-2">
+                <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 inline-flex items-center gap-2 shadow-sm font-semibold text-brand-dark">
+                  Status: <span className="text-brand-mid capitalize">{orderData.status}</span>
+                </div>
+                {orderData.status !== 'Delivered' && orderData.status !== 'Cancelled' && orderData.status !== 'Shipped' && (
+                  <button 
+                    onClick={() => setIsCancelModalOpen(true)}
+                    disabled={loadingCancel}
+                    className="text-xs font-bold text-red-500 hover:text-red-700 underline underline-offset-2 transition-colors disabled:opacity-50"
+                  >
+                    Cancel Order
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Stepper */}
-            <div className="p-6 md:p-10 border-b border-gray-100">
-              <div className="relative flex justify-between items-center max-w-2xl mx-auto">
-                {/* Connecting Line */}
+            {/* Stepper or Cancelled Hero */}
+            {orderData.status === 'Cancelled' ? (
+              <div className="p-6 md:p-10 border-b border-gray-100 bg-gray-50/50">
+                <CancelledOrderHero reason={orderData.cancelReason} />
+              </div>
+            ) : (
+              <div className="p-6 md:p-10 border-b border-gray-100">
+                <div className="relative flex justify-between items-center max-w-2xl mx-auto">
+                  {/* Connecting Line */}
                 <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 -translate-y-1/2 rounded-full z-0" />
                 
                 {/* Active Line */}
@@ -215,8 +250,9 @@ const TrackOrder = () => {
                     </div>
                   );
                 })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Order Items */}
             {orderData.items && orderData.items.length > 0 && (
@@ -249,6 +285,13 @@ const TrackOrder = () => {
             )}
           </div>
         )}
+
+        <CancelOrderModal 
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          onConfirm={handleCancelOrder}
+          loading={loadingCancel}
+        />
 
       </div>
     </div>

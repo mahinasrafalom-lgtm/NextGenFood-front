@@ -1,26 +1,26 @@
 import React from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
-    <footer className="bg-white pt-16 pb-8 border-t border-gray-200 font-bengali">
+    <footer className="bg-white pt-16 pb-8 border-t border-gray-200">
       <div className="container mx-auto px-4 max-w-[1350px]">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
           
-          {/* Col 1 */}
+          {/* Col 1: Brand Info */}
           <div className="lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="bg-brand-section p-1.5 rounded-md text-brand-mid">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 20c-1-1.5-2.5-3-4.5-3-2.6 0-4.5 1.5-4.5 3 0 1.5 2.5 3 4.5 3s4.5-1.5 4.5-3z"/><path d="M19 20c-1-1.5-2.5-3-4.5-3-2.6 0-4.5 1.5-4.5 3 0 1.5 2.5 3 4.5 3s4.5-1.5 4.5-3z"/><path d="M15 11c0-2-2.5-4-5-4s-5 2-5 4c0 1.5.5 3 2 4s3.5 1 5 1 3.5-.5 5-1 2-2.5 2-4z"/><path d="M7 6c0-1.5 1.5-3 3-3s3 1.5 3 3-1.5 3-3 3-3-1.5-3-3z"/></svg>
-              </div>
+            <Link to="/" className="flex items-center gap-2 mb-4 group">
+              <img src="/logo.png" alt="NexGen Veterinary" className="w-10 h-10 object-contain drop-shadow-sm group-hover:scale-105 transition-transform" />
               <div>
                 <h2 className="text-lg font-bold font-sans text-gray-900 leading-tight">Next <span className="text-gray-800">Pet Food</span></h2>
               </div>
-            </div>
+            </Link>
             <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              আপনার পোষা প্রাণীর স্বাস্থ্য ও সুস্থতা আমাদের প্রতিশ্রুতি।
+              Your pet's health and wellness is our commitment.
             </p>
             <div className="flex gap-3 text-gray-400">
+              {/* Social Icons */}
               <a href="#" className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-brand-mid hover:text-white hover:border-brand-mid transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
               </a>
@@ -30,50 +30,46 @@ const Footer = () => {
               <a href="#" className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-brand-mid hover:text-white hover:border-brand-mid transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
               </a>
-              <a href="#" className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-brand-mid hover:text-white hover:border-brand-mid transition-all flex font-sans font-bold">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/></svg>
-              </a>
             </div>
           </div>
 
-          {/* Col 2 */}
+          {/* Col 2: Shop */}
           <div>
-            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">শপ করুন</h3>
+            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">Shop</h3>
             <ul className="space-y-3 text-gray-500 text-sm">
-              <li><a href="#" className="hover:text-brand-mid transition-colors">সব পণ্য</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">বিড়াল</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">কুকুর</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ভেটেরিনারি</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ব্র্যান্ড</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">অফার</a></li>
+              <li><Link to="/products" className="hover:text-brand-mid transition-colors">All Products</Link></li>
+              <li><Link to="/products?animalType=cat" className="hover:text-brand-mid transition-colors">Cats</Link></li>
+              <li><Link to="/products?animalType=dog" className="hover:text-brand-mid transition-colors">Dogs</Link></li>
+              <li><Link to="/products?animalType=bird" className="hover:text-brand-mid transition-colors">Birds</Link></li>
+              <li><Link to="/products?animalType=medicine" className="hover:text-brand-mid transition-colors">Pharmacy</Link></li>
             </ul>
           </div>
 
-          {/* Col 3 */}
+          {/* Col 3: Services */}
           <div>
-            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">ব্র্যান্ড সেবা</h3>
+            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">Services</h3>
             <ul className="space-y-3 text-gray-500 text-sm">
-              <li><a href="#" className="hover:text-brand-mid transition-colors">পয়েন্ট রিডিম</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ডিলার নিবন্ধন</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ভেটেরিনারি পরামর্শ</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">অ্যাফিলিয়েট প্রোগ্রাম</a></li>
+              <li><Link to="/profile" className="hover:text-brand-mid transition-colors">Redeem Points</Link></li>
+              <li><Link to="/consultation/general" className="hover:text-brand-mid transition-colors">Vet Consultation</Link></li>
+              <li><Link to="/track-order" className="hover:text-brand-mid transition-colors">Track Order</Link></li>
+              <li><Link to="/faq" className="hover:text-brand-mid transition-colors">FAQs</Link></li>
             </ul>
           </div>
 
-          {/* Col 4 */}
+          {/* Col 4: About Us */}
           <div>
-            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">আমাদের সম্পর্কে</h3>
+            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">About Us</h3>
             <ul className="space-y-3 text-gray-500 text-sm">
-              <li><a href="#" className="hover:text-brand-mid transition-colors">আমাদের গল্প</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ব্লগ</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">ক্যারিয়ার</a></li>
-              <li><a href="#" className="hover:text-brand-mid transition-colors">প্রেস</a></li>
+              <li><Link to="/about" className="hover:text-brand-mid transition-colors">Our Story</Link></li>
+              <li><Link to="#" className="hover:text-brand-mid transition-colors">Blog</Link></li>
+              <li><Link to="#" className="hover:text-brand-mid transition-colors">Careers</Link></li>
+              <li><Link to="#" className="hover:text-brand-mid transition-colors">Press</Link></li>
             </ul>
           </div>
 
-          {/* Col 5 */}
+          {/* Col 5: Contact */}
           <div>
-            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">যোগাযোগ</h3>
+            <h3 className="font-bold text-gray-900 mb-4 uppercase tracking-wider text-sm">Contact Us</h3>
             <ul className="space-y-4 text-gray-500 text-sm font-sans">
               <li className="flex items-start gap-3">
                 <Phone size={18} className="text-brand-mid shrink-0 mt-0.5" />
@@ -93,10 +89,10 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 font-sans">
-          <p>© 2026 NexGen Veterinary. সর্বস্বত্ব সংরক্ষিত।</p>
+          <p>© 2026 NexGen Veterinary. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-gray-600">Privacy Policy</a>
-            <a href="#" className="hover:text-gray-600">Terms of Service</a>
+            <Link to="/terms" className="hover:text-brand-mid transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-brand-mid transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>
