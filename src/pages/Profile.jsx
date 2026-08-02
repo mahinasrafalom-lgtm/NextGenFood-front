@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User, LogOut, Package, MapPin, Heart, Settings,
+  User, LogOut, Package, MapPin, Settings,
   ShoppingBag, Truck, CreditCard, Star, Ticket,
   Menu, X, ArrowRight, DollarSign, Activity, FileText, MessageCircle,
   Edit3, Trash2, Camera, Lock, Shield, Mail, Phone, Copy, Check, ShoppingBasket, Wallet, Calendar,
@@ -38,7 +38,6 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   }, []);
 
   // Phase 2 State
-  const [wishlist, setWishlist] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [newAddress, setNewAddress] = useState({ type: 'Home', name: '', street: '', city: '', state: '', zip: '', phone: '' });
@@ -63,43 +62,92 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       
       const token = localStorage.getItem('authToken');
       if (token) {
+        console.log('Fetching profile data with token:', token ? 'Present' : 'Missing');
+        
         // Fetch Profile
         fetch('http://localhost:5005/api/users/profile', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
+          .then(res => {
+            console.log('Profile response status:', res.status);
+            return res.json();
+          })
           .then(data => {
+            console.log('Profile data:', data);
             if(data.phone) setProfileData(prev => ({...prev, phone: data.phone}));
             if(data.address) setProfileData(prev => ({...prev, address: data.address}));
-          }).catch(console.error);
+          }).catch(err => {
+            console.error('Profile fetch error:', err);
+          });
           
-        // Fetch Wishlist
-        fetch('http://localhost:5005/api/users/wishlist', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
-          .then(data => setWishlist(data || [])).catch(console.error);
-
         // Fetch Addresses
         fetch('http://localhost:5005/api/users/addresses', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
-          .then(data => setAddresses(data || [])).catch(console.error);
+          .then(res => {
+            console.log('Addresses response status:', res.status);
+            return res.json();
+          })
+          .then(data => {
+            console.log('Addresses data:', data);
+            setAddresses(Array.isArray(data) ? data : []);
+          }).catch(err => {
+            console.error('Addresses fetch error:', err);
+            setAddresses([]);
+          });
 
         // Fetch Orders
         fetch('http://localhost:5005/api/orders/my-orders', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
-          .then(data => setOrders(data || [])).catch(console.error);
+          .then(res => {
+            console.log('Orders response status:', res.status);
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            return res.json();
+          })
+          .then(data => {
+            console.log('Orders data received:', data);
+            console.log('Orders count:', Array.isArray(data) ? data.length : 'Not an array');
+            const ordersArray = Array.isArray(data) ? data : [];
+            setOrders(ordersArray);
+            console.log('Orders set in state:', ordersArray.length, 'orders');
+          }).catch(err => {
+            console.error('Orders fetch error:', err);
+            setOrders([]);
+          });
 
         // Fetch Tickets
         fetch('http://localhost:5005/api/tickets', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
-          .then(data => setTickets(data || [])).catch(console.error);
+          .then(res => {
+            console.log('Tickets response status:', res.status);
+            return res.json();
+          })
+          .then(data => {
+            console.log('Tickets data:', data);
+            setTickets(Array.isArray(data) ? data : []);
+          }).catch(err => {
+            console.error('Tickets fetch error:', err);
+            setTickets([]);
+          });
 
         // Fetch Coupons
         fetch('http://localhost:5005/api/coupons', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
-          .then(data => setCoupons(data || { available: [], applied: [] })).catch(console.error);
+          .then(res => {
+            console.log('Coupons response status:', res.status);
+            return res.json();
+          })
+          .then(data => {
+            console.log('Coupons data:', data);
+            setCoupons(data || { available: [], applied: [] });
+          }).catch(err => {
+            console.error('Coupons fetch error:', err);
+            setCoupons({ available: [], applied: [] });
+          });
 
         // Fetch Reviews with fallback for embedded product reviews
         fetch('http://localhost:5005/api/reviews/my-reviews', { headers: { Authorization: `Bearer ${token}` }})
-          .then(res => res.json())
+          .then(res => {
+            console.log('Reviews response status:', res.status);
+            return res.json();
+          })
           .then(async data => {
+            console.log('Reviews data:', data);
             let userReviews = Array.isArray(data) ? data : [];
             try {
               const api = await import('../services/api');
@@ -128,11 +176,18 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
               });
               setReviews([...userReviews, ...embedded]);
             } catch (err) {
-              console.error("Fallback review fetch error:", err);
+              console.error('Fallback review fetch error:', err);
               setReviews(userReviews);
             }
-          }).catch(console.error);
+          }).catch(err => {
+            console.error('Reviews fetch error:', err);
+            setReviews([]);
+          });
+      } else {
+        console.warn('No auth token found in localStorage');
       }
+    } else {
+      console.warn('No current user');
     }
   }, [currentUser]);
 
@@ -253,7 +308,6 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         { id: 'cancelled-orders', label: 'Cancelled Orders' }
       ]
     },
-
     { id: 'promo', label: 'Promo/Coupon', icon: Ticket },
     { id: 'address', label: 'Address', icon: MapPin },
     { id: 'payments', label: 'Payments', icon: CreditCard },
@@ -286,83 +340,68 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
     <div className="space-y-4 animate-fade-in">
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Total order placed */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-indigo-50/50 to-indigo-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{totalOrders}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Total order placed</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{totalOrders}</p>
+            <p className="text-sm font-medium text-gray-600">Total order placed</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 transform rotate-3 shrink-0">
-            <ShoppingBag size={22} className="text-white" />
-            <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full border-2 border-white w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-              <Check size={10} className="text-white" strokeWidth={4} />
-            </div>
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+            <ShoppingBag size={24} className="text-blue-600" />
           </div>
         </div>
 
         {/* Running orders */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-teal-50/50 to-teal-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{runningOrders}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Running orders</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{runningOrders}</p>
+            <p className="text-sm font-medium text-gray-600">Running orders</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-orange-300 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30 transform -rotate-6 shrink-0">
-            <Package size={22} className="text-white" />
-            <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full border-2 border-white w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-              <Check size={10} className="text-white" strokeWidth={4} />
-            </div>
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center shrink-0">
+            <Package size={24} className="text-orange-600" />
           </div>
         </div>
 
         {/* Items in cart */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-purple-50/50 to-purple-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{cartCount}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Items in cart</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{cartCount}</p>
+            <p className="text-sm font-medium text-gray-600">Items in cart</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
-            <ShoppingBasket size={20} className="text-white" />
+          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center shrink-0">
+            <ShoppingBasket size={24} className="text-green-600" />
           </div>
         </div>
 
-
         {/* Amount spent */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-rose-50/50 to-rose-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{amountSpent}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Amount spent (৳)</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{amountSpent}</p>
+            <p className="text-sm font-medium text-gray-600">Amount spent (৳)</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
-            <span className="text-white font-bold text-xl sm:text-2xl">৳</span>
-            <div className="absolute top-0 right-0 bg-cyan-400 rounded-full border-2 border-white w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center">
-              <Check size={8} className="text-white" strokeWidth={4} />
-            </div>
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+            <DollarSign size={24} className="text-blue-600" />
           </div>
         </div>
 
         {/* Opened Tickets */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-cyan-50/50 to-cyan-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{tickets.length}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Opened Tickets</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{tickets.length}</p>
+            <p className="text-sm font-medium text-gray-600">Opened Tickets</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 shrink-0">
-            <div className="absolute top-0 left-0 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-pink-200 to-pink-300 rounded-full flex items-center justify-center shadow-sm">
-              <MessageCircle size={14} className="text-pink-500" fill="currentColor" />
-            </div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 rounded-full flex items-center justify-center shadow-md">
-              <MessageCircle size={14} className="text-white" fill="currentColor" />
-            </div>
+          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center shrink-0">
+            <MessageCircle size={24} className="text-purple-600" />
           </div>
         </div>
 
         {/* Coupons */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-amber-50/50 to-amber-100/50 shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+        <div className="p-5 sm:p-6 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
           <div>
-            <p className="text-3xl font-black text-gray-800 leading-none mb-2">{Array.isArray(coupons?.available) ? coupons.available.length : 0}</p>
-            <p className="text-[13px] sm:text-sm font-medium text-gray-500">Coupons</p>
+            <p className="text-3xl font-bold text-gray-900 leading-none mb-2">{Array.isArray(coupons?.available) ? coupons.available.length : 0}</p>
+            <p className="text-sm font-medium text-gray-600">Coupons</p>
           </div>
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
-            <Ticket size={20} className="text-white" />
+          <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center shrink-0">
+            <Ticket size={24} className="text-yellow-600" />
           </div>
         </div>
       </div>
@@ -370,7 +409,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       <div className="mt-6 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
         <div className="bg-[#2D2D2D] px-4 py-3 flex justify-between items-center">
           <h3 className="text-white font-bold text-sm tracking-wide">Recent orders</h3>
-          <button onClick={() => setActiveTab('orders')} className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">All orders</button>
+          <button onClick={() => setActiveTab('all-orders')} className="bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-100 transition-colors">All orders</button>
         </div>
         {orders.length === 0 ? (
           <div className="bg-gray-50 py-12 flex justify-center items-center">
@@ -465,6 +504,8 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       ? orders 
       : orders.filter(o => o.status && o.status.toLowerCase() === 'cancelled');
     
+    console.log(`Rendering orders table - Type: ${type}, Total orders: ${orders.length}, Filtered: ${filteredOrders.length}`);
+    
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
         <div className="overflow-x-auto">
@@ -483,7 +524,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="p-8 text-center text-gray-500 font-bold">
-                    No orders found
+                    {type === 'cancelled' ? 'No cancelled orders found' : 'No orders found'}
                   </td>
                 </tr>
               ) : (
@@ -519,57 +560,6 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       </div>
     );
   };
-
-  const renderWishlist = () => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in">
-      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Heart className="text-[#f68b1e]" /> Wishlist
-      </h2>
-      {wishlist.length === 0 ? (
-        <EmptyState title="Your wishlist is empty" />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {wishlist.map((item) => (
-            <div key={item._id} className="flex gap-4 p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow relative">
-              <button 
-                className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
-                onClick={() => {
-                  const token = localStorage.getItem('authToken');
-                  fetch('http://localhost:5005/api/users/wishlist', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ productId: item._id })
-                  }).then(() => {
-                    setWishlist(wishlist.filter(w => w._id !== item._id));
-                    showToast('Removed from wishlist');
-                  });
-                }}
-              >
-                <Trash2 size={16} />
-              </button>
-              <div className="w-20 h-20 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                {item.images && item.images.length > 0 ? (
-                  <img src={item.images[0]} alt={item.name} className="w-full h-full object-cover" />
-                ) : (
-                  <Heart className="text-red-400" />
-                )}
-              </div>
-              <div className="flex flex-col justify-center flex-1">
-                 <h4 className="font-bold text-gray-900 line-clamp-1">{item.name}</h4>
-                 <p className="text-[#f68b1e] font-bold mt-1">৳{item.price}</p>
-                 <button 
-                  onClick={() => navigate(`/product/${item._id}`)}
-                  className="mt-2 text-sm font-bold text-white bg-gray-900 px-3 py-1.5 rounded-lg w-max hover:bg-black transition-colors"
-                 >
-                   View Product
-                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 
   const renderPromo = () => (
     <div className="animate-fade-in space-y-6">
@@ -825,31 +815,28 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-8 rounded-2xl bg-gradient-to-br from-indigo-100/50 to-purple-50/50 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
-          <div className="w-16 h-16 bg-[#0a80ff] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 mb-4 text-white">
-            <Wallet size={28} />
+        <div className="p-8 rounded-lg bg-white flex flex-col items-center justify-center text-center shadow-sm border border-gray-200">
+          <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+            <Wallet size={28} className="text-blue-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 leading-tight">0 BDT</h3>
-          <p className="text-gray-500 text-sm mt-1">This month spent</p>
+          <p className="text-gray-600 text-sm mt-1">This month spent</p>
         </div>
 
-        <div className="p-8 rounded-2xl bg-gradient-to-br from-lime-50/50 to-rose-50/50 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
-          <div className="w-16 h-16 bg-[#00d084] rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-4 text-white relative">
-            <Calendar size={28} />
-            <div className="absolute bottom-0 right-0 bg-[#00d084] border-2 border-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">
-              $
-            </div>
+        <div className="p-8 rounded-lg bg-white flex flex-col items-center justify-center text-center shadow-sm border border-gray-200">
+          <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+            <Calendar size={28} className="text-green-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 leading-tight">0 BDT</h3>
-          <p className="text-gray-500 text-sm mt-1">Last 6 month spent</p>
+          <p className="text-gray-600 text-sm mt-1">Last 6 month spent</p>
         </div>
 
-        <div className="p-8 rounded-2xl bg-gradient-to-br from-purple-100/50 to-pink-50/50 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
-          <div className="w-16 h-16 bg-[#ff6b00] rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30 mb-4 text-white">
-            <Wallet size={28} />
+        <div className="p-8 rounded-lg bg-white flex flex-col items-center justify-center text-center shadow-sm border border-gray-200">
+          <div className="w-16 h-16 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
+            <Wallet size={28} className="text-orange-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 leading-tight">0</h3>
-          <p className="text-gray-500 text-sm mt-1">Total spent</p>
+          <p className="text-gray-600 text-sm mt-1">Total spent</p>
         </div>
       </div>
 
@@ -1076,7 +1063,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                 <div key={idx} className={`flex gap-4 ${resp.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div className={`w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center shrink-0 ${resp.sender === 'admin' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
                     {resp.sender === 'admin' ? (
-                      <span className="text-lg" title="Support">🐾</span>
+                      <Shield size={18} />
                     ) : (
                       <User size={18} />
                     )}
@@ -1241,11 +1228,13 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   );
 
   const renderContent = () => {
+    console.log('Rendering tab:', activeTab);
+    console.log('Current state - Orders:', orders.length, 'Tickets:', tickets.length, 'Reviews:', reviews.length);
+    
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
       case 'all-orders': return renderOrdersTable('all');
       case 'cancelled-orders': return renderOrdersTable('cancelled');
-      case 'wishlist': return renderWishlist();
       case 'promo': return renderPromo();
       case 'address': return renderAddress();
       case 'payments': return renderPayments();
@@ -1287,7 +1276,9 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-sm font-bold ${
                     isActive && !link.subLinks
                       ? 'bg-gray-800 text-white shadow-md'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                      : isActive && link.subLinks
+                      ? 'bg-gray-100 text-gray-900'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -1295,7 +1286,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                     {link.label}
                   </div>
                   {link.subLinks ? (
-                    <ArrowRight size={16} className={`text-gray-400 transition-transform ${expandedMenus[link.id] ? 'rotate-90' : ''}`} />
+                    <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${expandedMenus[link.id] ? 'rotate-180' : ''}`} />
                   ) : (isActive && (
                     <ArrowRight size={16} className="text-white" />
                   ))}
