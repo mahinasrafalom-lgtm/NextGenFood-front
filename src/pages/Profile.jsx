@@ -276,7 +276,10 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
 
   const renderDashboard = () => {
     const totalOrders = orders.length;
-    const runningOrders = orders.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length;
+    const runningOrders = orders.filter(o => {
+      const status = o.status ? o.status.toLowerCase() : '';
+      return status !== 'delivered' && status !== 'cancelled';
+    }).length;
     const amountSpent = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
     return (
@@ -395,9 +398,9 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                        order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                        order.status === 'Processing' ? 'bg-blue-100 text-blue-700' :
+                        order.status?.toLowerCase() === 'delivered' ? 'bg-green-100 text-green-700' :
+                        order.status?.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        order.status?.toLowerCase() === 'processing' ? 'bg-blue-100 text-blue-700' :
                         'bg-orange-100 text-[#f68b1e]'
                       }`}>
                         {order.status || 'Order Placed'}
@@ -460,7 +463,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
     // type is either 'all' or 'cancelled'
     const filteredOrders = type === 'all' 
       ? orders 
-      : orders.filter(o => o.status === 'Cancelled' || o.status === 'cancelled');
+      : orders.filter(o => o.status && o.status.toLowerCase() === 'cancelled');
     
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
@@ -492,9 +495,9 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                        order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                        order.status === 'Processing' ? 'bg-blue-100 text-blue-700' :
+                        order.status?.toLowerCase() === 'delivered' ? 'bg-green-100 text-green-700' :
+                        order.status?.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        order.status?.toLowerCase() === 'processing' ? 'bg-blue-100 text-blue-700' :
                         'bg-orange-100 text-[#f68b1e]'
                       }`}>
                         {order.status || 'Order Placed'}

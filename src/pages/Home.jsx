@@ -6,6 +6,7 @@ import FeaturedCategories from '../components/FeaturedCategories';
 import BrandsSection from '../components/BrandsSection';
 import ProductSection from '../components/ProductSection';
 import { fetchStorefrontData, fetchTopSales } from '../services/api';
+import { useHomeData } from '../context/HomeDataContext';
 
 import AnimatedLoader from '../components/AnimatedLoader';
 
@@ -13,13 +14,33 @@ import AnimatedLoader from '../components/AnimatedLoader';
 
 const Home = () => {
   const [visibleCategories, setVisibleCategories] = useState(3);
-  const [storefrontData, setStorefrontData] = useState(null);
-  const [topSales, setTopSales] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  
+  // Use cached data from context
+  const { 
+    storefrontData: cachedStorefront, 
+    topSales: cachedTopSales, 
+    allProducts: cachedProducts,
+    isCacheValid,
+    updateCache 
+  } = useHomeData();
+
+  const [storefrontData, setStorefrontData] = useState(cachedStorefront);
+  const [topSales, setTopSales] = useState(cachedTopSales || []);
+  const [allProducts, setAllProducts] = useState(cachedProducts || []);
 
   useEffect(() => {
     const loadHomeData = async () => {
+      // If cache is valid, use cached data
+      if (isCacheValid()) {
+        setStorefrontData(cachedStorefront);
+        setTopSales(cachedTopSales);
+        setAllProducts(cachedProducts);
+        setLoading(false);
+        return;
+      }
+
+      // Otherwise fetch fresh data
       setLoading(true);
       try {
         const results = await Promise.allSettled([
@@ -29,9 +50,16 @@ const Home = () => {
         ]);
         
         // Use fulfilled values or fallback to defaults if a promise was rejected
-        setStorefrontData(results[0].status === 'fulfilled' ? (results[0].value || {}) : {});
-        setTopSales(results[1].status === 'fulfilled' ? (results[1].value || []) : []);
-        setAllProducts(results[2].status === 'fulfilled' ? (results[2].value || []) : []);
+        const newStorefront = results[0].status === 'fulfilled' ? (results[0].value || {}) : {};
+        const newTopSales = results[1].status === 'fulfilled' ? (results[1].value || []) : [];
+        const newProducts = results[2].status === 'fulfilled' ? (results[2].value || []) : [];
+        
+        setStorefrontData(newStorefront);
+        setTopSales(newTopSales);
+        setAllProducts(newProducts);
+        
+        // Update cache
+        updateCache(newStorefront, newTopSales, newProducts);
       } catch (error) {
         console.error("Failed to load homepage data", error);
       } finally {
@@ -39,7 +67,7 @@ const Home = () => {
       }
     };
     loadHomeData();
-  }, []);
+  }, [isCacheValid, cachedStorefront, cachedTopSales, cachedProducts, updateCache]);
 
   if (loading || !storefrontData) {
     return <AnimatedLoader />;

@@ -94,25 +94,33 @@ const CategoryItem = ({ cat, activeDropdown, setActiveDropdown }) => {
   
   const isOpen = activeDropdown === cat.id;
 
+  const isTouchDevice = () => {
+    return window.matchMedia && window.matchMedia('(hover: none)').matches;
+  };
+
   const open = () => {
-    if (window.innerWidth >= 768) {
+    if (window.innerWidth >= 768 && !isTouchDevice()) {
       clearTimeout(timeoutRef.current);
       setActiveDropdown(cat.id);
     }
   };
 
   const close = () => {
-    if (window.innerWidth >= 768) {
+    if (window.innerWidth >= 768 && !isTouchDevice()) {
       timeoutRef.current = setTimeout(() => {
         setActiveDropdown((prev) => (prev === cat.id ? null : prev));
       }, 150);
     }
   };
 
-  const handleMainClick = () => {
+  const handleMainClick = (e) => {
     if (hasDropdown) {
-      // Toggle on click for mobile, but also navigate to "view all"
-      setActiveDropdown((prev) => (prev === cat.id ? null : cat.id));
+      if (isTouchDevice()) {
+        e.preventDefault();
+        setActiveDropdown((prev) => (prev === cat.id ? null : cat.id));
+      } else {
+        navigate(`/products?animalType=${cat.id}`);
+      }
     } else {
       navigate(`/products?animalType=${cat.id}`);
     }
@@ -147,18 +155,18 @@ const CategoryItem = ({ cat, activeDropdown, setActiveDropdown }) => {
         className={`flex items-center gap-1.5 px-3 md:px-4 py-4 text-[14px] md:text-[15px] font-bold transition-all duration-300 relative group ${
           isOpen
             ? 'text-brand-mid'
-            : 'text-gray-300 hover:text-white'
+            : isTouchDevice() ? 'text-gray-300' : 'text-gray-300 hover:text-white'
         }`}
       >
         <span className="whitespace-nowrap tracking-wide">{cat.label}</span>
         {hasDropdown && (
           <ChevronDown
             size={14}
-            className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-mid' : 'text-gray-400 group-hover:text-white'}`}
+            className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-mid' : isTouchDevice() ? 'text-gray-400' : 'text-gray-400 group-hover:text-white'}`}
           />
         )}
         {/* Animated bottom underline */}
-        <div className={`absolute bottom-0 left-0 h-[3px] bg-brand-mid transition-all duration-300 ${isOpen ? 'w-full' : 'w-0 group-hover:w-full'}`}></div>
+        <div className={`absolute bottom-0 left-0 h-[3px] bg-brand-mid transition-all duration-300 ${isOpen ? 'w-full' : isTouchDevice() ? 'w-0' : 'w-0 group-hover:w-full'}`}></div>
       </button>
 
       {/* Dropdown Panel — positioned outside the overflow container */}
@@ -172,11 +180,11 @@ const CategoryItem = ({ cat, activeDropdown, setActiveDropdown }) => {
             {/* View All header */}
             <button
               onClick={handleViewAll}
-              className="w-full flex items-center justify-between px-5 py-4 text-[13px] font-bold text-white bg-white/5 hover:bg-brand-mid transition-all border-b border-white/10 group/header relative overflow-hidden"
+              className={`w-full flex items-center justify-between px-5 py-4 text-[13px] font-bold text-white bg-white/5 transition-all border-b border-white/10 group/header relative overflow-hidden ${isTouchDevice() ? '' : 'hover:bg-brand-mid'}`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/header:translate-x-[100%] transition-transform duration-700"></div>
+              <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] transition-transform duration-700 ${isTouchDevice() ? '' : 'group-hover/header:translate-x-[100%]'}`}></div>
               <span className="relative z-10 uppercase tracking-[0.15em]">View all {cat.label}</span>
-              <svg className="transform group-hover/header:translate-x-1 transition-transform relative z-10" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <svg className={`transform transition-transform relative z-10 ${isTouchDevice() ? '' : 'group-hover/header:translate-x-1'}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </button>
 
             {/* Subcategory items */}
@@ -184,11 +192,11 @@ const CategoryItem = ({ cat, activeDropdown, setActiveDropdown }) => {
               <button
                 key={sub.id}
                 onClick={() => handleSubClick(sub)}
-                className="w-full flex items-center px-5 py-3.5 text-[14px] text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-200 group border-b border-white/5 last:border-b-0 font-medium relative"
+                className={`w-full flex items-center px-5 py-3.5 text-[14px] transition-all duration-200 group border-b border-white/5 last:border-b-0 font-medium relative ${isTouchDevice() ? 'text-gray-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
               >
-                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand-mid opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <span className="group-hover:translate-x-2 transition-transform duration-200 tracking-wide">{sub.label}</span>
-                <svg className="ml-auto opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 text-brand-mid" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                <div className={`absolute left-0 top-0 bottom-0 w-[3px] bg-brand-mid opacity-0 transition-opacity ${isTouchDevice() ? '' : 'group-hover:opacity-100'}`}></div>
+                <span className={`transition-transform duration-200 tracking-wide ${isTouchDevice() ? '' : 'group-hover:translate-x-2'}`}>{sub.label}</span>
+                <svg className={`ml-auto opacity-0 -translate-x-2 transition-all duration-200 text-brand-mid ${isTouchDevice() ? '' : 'group-hover:opacity-100 group-hover:translate-x-0'}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </button>
             ))}
           </div>
