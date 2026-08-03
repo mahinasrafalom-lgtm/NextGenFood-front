@@ -10,6 +10,7 @@ const CartDrawer = ({ isLoggedIn }) => {
   const navigate = useNavigate();
 
   const [offer, setOffer] = useState(null);
+  const [offerDismissed, setOfferDismissed] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [isPaused, setIsPaused] = useState(false);
   const sliderRef = useRef(null);
@@ -111,28 +112,34 @@ const CartDrawer = ({ isLoggedIn }) => {
         <div className="flex-1 overflow-y-auto flex flex-col bg-white hide-scrollbar">
           
           {/* Promotional Banner */}
-          {offer && !unlocked && (
+          {offer && !offerDismissed && cartItems.length > 0 && (
             <div className="p-3 pb-0">
-              <div className="bg-orange-50 border border-orange-100 rounded-lg p-3 relative overflow-hidden flex items-center gap-3">
-                <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center shrink-0 shadow-sm shadow-yellow-500/20">
-                  <Gift size={16} className="text-gray-900" />
-                </div>
+              <div className={`rounded-lg p-3 relative overflow-hidden flex items-center gap-3 border ${unlocked ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-100'}`}>
+                {unlocked && offer.rewardImage ? (
+                  <div className="w-10 h-10 bg-white rounded-lg border border-green-200 flex items-center justify-center shrink-0 p-0.5">
+                    <img src={offer.rewardImage} alt="Reward" className="max-w-full max-h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${unlocked ? 'bg-green-500 shadow-green-500/20' : 'bg-yellow-500 shadow-yellow-500/20'}`}>
+                    <Gift size={16} className={unlocked ? 'text-white' : 'text-gray-900'} />
+                  </div>
+                )}
                 <div className="flex-1 pr-6">
                   <p className="text-[12px] text-gray-700 font-medium">{offer.rewardTitle}</p>
                   <p className="text-[12px] font-medium text-gray-600 mt-0.5">
                     {unlocked ? (
-                      <span className="text-green-600 font-bold">Offer Unlocked! 🎉</span>
+                      <span className="text-green-600 font-bold">Reward Unlocked! 🎉 It will be added FREE with your order.</span>
                     ) : (
                       <>Add <strong className="text-[#f97316]">৳{amountNeeded.toLocaleString()}</strong> more to unlock!</>
                     )}
                   </p>
                 </div>
-                <button className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600 transition-colors">
+                <button onClick={() => setOfferDismissed(true)} className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600 transition-colors">
                   <X size={14} />
                 </button>
                 {/* Progress bar line at absolute bottom */}
-                <div className="absolute bottom-0 left-0 h-1 bg-brand-mid/20 w-full">
-                  <div className="h-full bg-brand-mid transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                <div className={`absolute bottom-0 left-0 h-1 w-full ${unlocked ? 'bg-green-500/20' : 'bg-brand-mid/20'}`}>
+                  <div className={`h-full transition-all duration-500 ${unlocked ? 'bg-green-500' : 'bg-brand-mid'}`} style={{ width: `${progress}%` }}></div>
                 </div>
               </div>
             </div>
