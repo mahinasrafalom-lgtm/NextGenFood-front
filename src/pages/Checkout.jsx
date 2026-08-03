@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Minus, Plus, Trash2, ChevronDown, CheckCircle2, Circle, User, Loader2 } from 'lucide-react';
+import { ChevronRight, Minus, Plus, Trash2, ChevronDown, CheckCircle2, Circle, User, Loader2, HandCoins } from 'lucide-react';
+import SearchableSelect from '../components/SearchableSelect';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/Toast';
@@ -13,7 +14,7 @@ const Checkout = ({ isLoggedIn }) => {
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [shippingAddress, setShippingAddress] = useState({
     fullName: '',
@@ -35,6 +36,12 @@ const Checkout = ({ isLoggedIn }) => {
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [isCouponOpen, setIsCouponOpen] = useState(false);
+
+  // Delivery cost: inside Dhaka 60tk, outside Dhaka 120tk
+  const deliveryCost = cartItems.length === 0 || !shippingAddress.district
+    ? 0
+    : shippingAddress.district === 'dhaka' ? 60 : 120;
+  const grandTotal = cartTotal + deliveryCost;
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -133,7 +140,8 @@ const Checkout = ({ isLoggedIn }) => {
         shippingAddress,
         billingAddress: billingSameAsShipping ? shippingAddress : billingAddress,
         items: formattedItems,
-        total: cartTotal,
+        total: grandTotal,
+        deliveryCost,
         paymentMethod
       });
       showToast(`Order placed successfully! Order ID: ${response.orderId}`);
@@ -375,36 +383,23 @@ const Checkout = ({ isLoggedIn }) => {
                   />
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="relative">
-                      <select 
-                        value={shippingAddress.district}
-                        onChange={(e) => {
-                          setShippingAddress({...shippingAddress, district: e.target.value, thana: ''});
-                          if (errors.district) setErrors({...errors, district: false});
-                        }}
-                        className={`w-full border rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer transition-colors ${errors.district ? 'border-red-500 bg-red-50/30' : 'border-gray-200'}`}
-                      >
-                        <option value="">Select District *</option>
-                        {ALL_DISTRICTS.map(dist => (
-                          <option key={dist.id} value={dist.id}>{dist.label}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                    <div className="relative">
-                      <select 
-                        value={shippingAddress.thana}
-                        onChange={(e) => setShippingAddress({...shippingAddress, thana: e.target.value})}
-                        className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
-                        disabled={!shippingAddress.district || !THANAS_BY_DISTRICT[shippingAddress.district]}
-                      >
-                        <option value="">Select Thana (Optional)</option>
-                        {(THANAS_BY_DISTRICT[shippingAddress.district] || []).map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
+                    <SearchableSelect
+                      options={ALL_DISTRICTS.map(dist => ({ value: dist.id, label: dist.label }))}
+                      value={shippingAddress.district}
+                      onChange={(val) => {
+                        setShippingAddress({...shippingAddress, district: val, thana: ''});
+                        if (errors.district) setErrors({...errors, district: false});
+                      }}
+                      placeholder="Select District *"
+                      error={!!errors.district}
+                    />
+                    <SearchableSelect
+                      options={(THANAS_BY_DISTRICT[shippingAddress.district] || []).map(t => ({ value: t, label: t }))}
+                      value={shippingAddress.thana}
+                      onChange={(val) => setShippingAddress({...shippingAddress, thana: val})}
+                      placeholder="Select Thana (Optional)"
+                      disabled={!shippingAddress.district || !THANAS_BY_DISTRICT[shippingAddress.district]}
+                    />
                   </div>
 
                 </form>
@@ -475,33 +470,19 @@ const Checkout = ({ isLoggedIn }) => {
                     />
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="relative">
-                        <select 
-                          value={billingAddress.district}
-                          onChange={(e) => setBillingAddress({...billingAddress, district: e.target.value, thana: ''})}
-                          className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer transition-colors"
-                        >
-                          <option value="">Select District *</option>
-                          {ALL_DISTRICTS.map(dist => (
-                            <option key={dist.id} value={dist.id}>{dist.label}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      </div>
-                      <div className="relative">
-                        <select 
-                          value={billingAddress.thana}
-                          onChange={(e) => setBillingAddress({...billingAddress, thana: e.target.value})}
-                          className="w-full border border-gray-200 rounded text-sm px-4 py-3 focus:outline-none focus:border-brand-mid bg-[#fdfdfd] appearance-none text-gray-700 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
-                          disabled={!billingAddress.district || !THANAS_BY_DISTRICT[billingAddress.district]}
-                        >
-                          <option value="">Select Thana (Optional)</option>
-                          {(THANAS_BY_DISTRICT[billingAddress.district] || []).map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      </div>
+                      <SearchableSelect
+                        options={ALL_DISTRICTS.map(dist => ({ value: dist.id, label: dist.label }))}
+                        value={billingAddress.district}
+                        onChange={(val) => setBillingAddress({...billingAddress, district: val, thana: ''})}
+                        placeholder="Select District *"
+                      />
+                      <SearchableSelect
+                        options={(THANAS_BY_DISTRICT[billingAddress.district] || []).map(t => ({ value: t, label: t }))}
+                        value={billingAddress.thana}
+                        onChange={(val) => setBillingAddress({...billingAddress, thana: val})}
+                        placeholder="Select Thana (Optional)"
+                        disabled={!billingAddress.district || !THANAS_BY_DISTRICT[billingAddress.district]}
+                      />
                     </div>
                   </form>
                 </div>
@@ -523,52 +504,68 @@ const Checkout = ({ isLoggedIn }) => {
               
               <div className="bg-white sm:rounded-lg shadow-[0_2px_15px_rgba(0,0,0,0.03)] border-y sm:border-x border-gray-100 p-4">
                 <div className="grid grid-cols-2 gap-3">
+                  {/* bKash */}
+                  <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'bkash' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'bkash'}
+                      onChange={() => setPaymentMethod('bkash')}
+                      className="hidden"
+                    />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 bg-white rounded border border-gray-100 flex items-center justify-center p-0.5">
+                      <img src="/payments/bkash.svg" alt="bKash" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">bKash</span>
+                    {paymentMethod === 'bkash' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
+                  </label>
+
+                  {/* Nagad */}
+                  <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'nagad' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'nagad'}
+                      onChange={() => setPaymentMethod('nagad')}
+                      className="hidden"
+                    />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 bg-white rounded border border-gray-100 flex items-center justify-center p-0.5">
+                      <img src="/payments/nagad.png" alt="Nagad" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">Nagad</span>
+                    {paymentMethod === 'nagad' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
+                  </label>
+
+                  {/* Rocket */}
+                  <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'rocket' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'rocket'}
+                      onChange={() => setPaymentMethod('rocket')}
+                      className="hidden"
+                    />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 bg-white rounded border border-gray-100 flex items-center justify-center p-0.5">
+                      <img src="/payments/rocket.svg" alt="Rocket" className="max-w-full max-h-full object-contain" />
+                    </div>
+                    <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">Rocket</span>
+                    {paymentMethod === 'rocket' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
+                  </label>
+
                   {/* COD */}
                   <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      checked={paymentMethod === 'cod'} 
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'cod'}
                       onChange={() => setPaymentMethod('cod')}
-                      className="hidden" 
+                      className="hidden"
                     />
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 bg-[#eef2ff] rounded flex items-center justify-center text-[#4f46e5] text-xs sm:text-base">
-                       💵
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 bg-green-50 rounded border border-green-100 flex items-center justify-center text-green-600">
+                      <HandCoins size={18} />
                     </div>
                     <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">Cash On Delivery</span>
                     {paymentMethod === 'cod' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
-                  </label>
-
-                  {/* Online Payment */}
-                  <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'online' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      checked={paymentMethod === 'online'} 
-                      onChange={() => setPaymentMethod('online')}
-                      className="hidden" 
-                    />
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 bg-[#f0f9ff] rounded flex items-center justify-center text-[#0284c7] text-xs sm:text-base">
-                       💳
-                    </div>
-                    <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">Online Payment</span>
-                    {paymentMethod === 'online' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
-                  </label>
-
-                  {/* bKash */}
-                  <label className={`flex items-center gap-1.5 sm:gap-3 p-2 sm:p-3 rounded border cursor-pointer transition-colors ${paymentMethod === 'bkash' ? 'border-brand-mid bg-brand-mid/5' : 'border-gray-200 hover:border-brand-mid/50'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
-                      checked={paymentMethod === 'bkash'} 
-                      onChange={() => setPaymentMethod('bkash')}
-                      className="hidden" 
-                    />
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 bg-[#e2136e]/10 rounded flex items-center justify-center text-[#e2136e] font-bold text-[10px] sm:text-xs italic">
-                      bK
-                    </div>
-                    <span className="text-[11px] sm:text-sm font-semibold text-gray-800 flex-1 leading-tight">Bkash</span>
-                    {paymentMethod === 'bkash' && <CheckCircle2 size={16} className="text-brand-mid shrink-0" />}
                   </label>
                 </div>
               </div>
@@ -604,12 +601,21 @@ const Checkout = ({ isLoggedIn }) => {
                 <span className="text-sm font-bold text-gray-800">৳{cartTotal.toLocaleString()}</span>
               </div>
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-                <span className="text-sm text-gray-600 font-medium">Delivery cost</span>
-                <span className="text-sm font-bold text-gray-800">৳0</span>
+                <span className="text-sm text-gray-600 font-medium">
+                  Delivery cost
+                  {shippingAddress.district && (
+                    <span className="text-xs text-gray-400 ml-1">
+                      ({shippingAddress.district === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'})
+                    </span>
+                  )}
+                </span>
+                <span className="text-sm font-bold text-gray-800">
+                  {shippingAddress.district ? `৳${deliveryCost}` : <span className="text-xs font-medium text-gray-400">Select district</span>}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-base font-bold text-gray-900">Total</span>
-                <span className="text-base font-bold text-brand-mid">৳{cartTotal.toLocaleString()}</span>
+                <span className="text-base font-bold text-brand-mid">৳{grandTotal.toLocaleString()}</span>
               </div>
             </div>
 

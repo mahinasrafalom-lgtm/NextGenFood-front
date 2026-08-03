@@ -5,11 +5,13 @@ import {
   ShoppingBag, Truck, CreditCard, Star, Ticket,
   Menu, X, ArrowRight, DollarSign, Activity, FileText, MessageCircle,
   Edit3, Trash2, Camera, Lock, Shield, Mail, Phone, Copy, Check, ShoppingBasket, Wallet, Calendar,
-  ArrowLeft, Upload, Plus, EyeOff, ChevronDown
+  ArrowLeft, Upload, Plus, Eye, EyeOff, ChevronDown
 } from 'lucide-react';
 import { showToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { unlink, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { auth } from '../firebase';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
@@ -19,11 +21,16 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const { currentUser, logout, changePassword, updateProfile } = useAuth();
   const { cartCount } = useCart();
   const [profileData, setProfileData] = useState({ name: '', address: '', phone: '', email: '' });
-  const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [photoFileName, setPhotoFileName] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState({ 'orders-group': true });
+  const [expandedMenus, setExpandedMenus] = useState({});
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [replyMessage, setReplyMessage] = useState('');
@@ -74,8 +81,10 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           })
           .then(data => {
             console.log('Profile data:', data);
+            if(data.name) setProfileData(prev => ({...prev, name: data.name}));
             if(data.phone) setProfileData(prev => ({...prev, phone: data.phone}));
             if(data.address) setProfileData(prev => ({...prev, address: data.address}));
+            if(data.photoURL) setProfilePhoto(data.photoURL);
           }).catch(err => {
             console.error('Profile fetch error:', err);
           });
@@ -287,31 +296,122 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   };
 
   const handleProfileUpdate = async () => {
+    if (!profileData.name.trim()) {
+      showToast('Name cannot be empty');
+      return;
+    }
+    setIsSavingProfile(true);
     try {
-      await updateProfile({ displayName: profileData.name });
-      // Here you would also push changes to your backend API
-      // await fetch('/api/users/profile', { method: 'PUT', body: JSON.stringify(profileData), ... })
+      await updateProfile({ displayName: profileData.name.trim() });
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`${API_BASE}/users/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: profileData.name.trim(),
+          phone: profileData.phone,
+          address: profileData.address,
+          photoURL: profilePhoto
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update profile');
+      }
       showToast('Profile updated successfully!');
     } catch (error) {
-      showToast('Error updating profile');
+      showToast(error.message || 'Error updating profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleProfilePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image size should be less than 2MB');
+      return;
+    }
+    setPhotoFileName(file.name);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfilePhoto(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRevokeGoogle = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const hasGoogle = user.providerData.some(p => p.providerId === 'google.com');
+    if (!hasGoogle) {
+      showToast('No Google account is linked');
+      return;
+    }
+    if (user.providerData.length <= 1) {
+      showToast('Cannot revoke your only sign-in method');
+      return;
+    }
+    try {
+      await unlink(user, 'google.com');
+      showToast('Google account unlinked successfully');
+    } catch (error) {
+      showToast('Failed to unlink Google account');
     }
   };
 
   const handlePasswordUpdate = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      showToast('You must be logged in to change your password');
+      return;
+    }
+    const hasPasswordProvider = user.providerData.some(p => p.providerId === 'password');
+    if (!hasPasswordProvider) {
+      showToast('You signed in with Google, so this account has no password to change');
+      return;
+    }
+    if (!passwords.currentPassword) {
+      showToast('Please enter your current password');
+      return;
+    }
+    if (passwords.newPassword.length < 8) {
+      showToast('New password must be at least 8 characters');
+      return;
+    }
     if (passwords.newPassword !== passwords.confirmPassword) {
       showToast('Passwords do not match');
       return;
     }
-    if (passwords.newPassword.length < 8) {
-      showToast('Password must be at least 8 characters');
+    if (passwords.newPassword === passwords.currentPassword) {
+      showToast('New password must be different from the current one');
       return;
     }
+    setIsUpdatingPassword(true);
     try {
+      const credential = EmailAuthProvider.credential(user.email, passwords.currentPassword);
+      await reauthenticateWithCredential(user, credential);
       await changePassword(passwords.newPassword);
       showToast('Password updated successfully!');
-      setPasswords({ newPassword: '', confirmPassword: '' });
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setShowPasswords({ current: false, new: false, confirm: false });
     } catch (error) {
-      showToast(error.message || 'Error updating password');
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        showToast('Current password is incorrect');
+      } else if (error.code === 'auth/too-many-requests') {
+        showToast('Too many attempts. Please try again later.');
+      } else if (error.code === 'auth/weak-password') {
+        showToast('New password is too weak');
+      } else {
+        showToast(error.message || 'Error updating password');
+      }
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -1145,13 +1245,18 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Upload New Photo</label>
-            <div className="flex border border-gray-100 rounded-lg overflow-hidden h-[46px]">
-              <label className="bg-gray-50 px-4 flex items-center text-sm text-gray-700 cursor-pointer hover:bg-gray-100 border-r border-gray-100">
-                Choose file
-                <input type="file" className="hidden" />
-              </label>
-              <div className="px-4 flex items-center text-sm text-gray-500 bg-white flex-1">
-                No file chosen
+            <div className="flex items-center gap-3">
+              {profilePhoto && (
+                <img src={profilePhoto} alt="Profile" className="w-[46px] h-[46px] rounded-full object-cover border border-gray-200 shrink-0" />
+              )}
+              <div className="flex border border-gray-100 rounded-lg overflow-hidden h-[46px] flex-1 min-w-0">
+                <label className="bg-gray-50 px-4 flex items-center text-sm text-gray-700 cursor-pointer hover:bg-gray-100 border-r border-gray-100 whitespace-nowrap">
+                  Choose file
+                  <input type="file" accept="image/*" className="hidden" onChange={handleProfilePhotoUpload} />
+                </label>
+                <div className="px-4 flex items-center text-sm text-gray-500 bg-white flex-1 truncate">
+                  {photoFileName || 'No file chosen'}
+                </div>
               </div>
             </div>
           </div>
@@ -1162,11 +1267,12 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           <input type="text" value={profileData.address} onChange={(e) => setProfileData({...profileData, address: e.target.value})} placeholder="ex. Dhaka, Bangladesh" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm placeholder:text-gray-400" />
         </div>
 
-        <button 
-          onClick={handleProfileUpdate} 
-          className="w-full py-3.5 bg-[#2D2D2D] hover:bg-black text-white font-bold rounded-lg transition-colors text-sm"
+        <button
+          onClick={handleProfileUpdate}
+          disabled={isSavingProfile}
+          className="w-full py-3.5 bg-[#2D2D2D] hover:bg-black text-white font-bold rounded-lg transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Save Changes
+          {isSavingProfile ? 'Saving...' : 'Save Changes'}
         </button>
 
         <div className="space-y-6 pt-4">
@@ -1174,8 +1280,8 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
             <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
             <div className="relative flex items-center">
               <input type="tel" value={profileData.phone} onChange={(e) => setProfileData({...profileData, phone: e.target.value})} placeholder="e.g. 01*********" className="w-full bg-white border border-gray-100 rounded-lg pl-4 pr-36 py-3 focus:outline-none focus:border-gray-300 text-sm placeholder:text-gray-400" />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded">
-                CHANGE NUMBER
+              <button onClick={handleProfileUpdate} disabled={isSavingProfile} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded disabled:opacity-60">
+                SAVE NUMBER
               </button>
             </div>
           </div>
@@ -1184,7 +1290,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
             <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
             <div className="relative flex items-center">
               <input type="email" value={profileData.email} disabled placeholder="mahincse543@gmail.com" className="w-full bg-gray-50 border border-gray-100 rounded-lg pl-4 pr-36 py-3 focus:outline-none focus:border-gray-300 text-sm placeholder:text-gray-400 text-gray-500 cursor-not-allowed" />
-              <button className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded">
+              <button onClick={() => showToast('Email is linked to your login account and cannot be changed here')} className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded">
                 CHANGE EMAIL
               </button>
             </div>
@@ -1203,7 +1309,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
               </svg>
               <span className="font-bold text-gray-900 text-sm">Google</span>
             </div>
-            <button className="px-4 py-1.5 bg-gray-50 text-gray-600 hover:bg-gray-100 text-xs font-bold rounded-lg border border-gray-100 transition-colors">
+            <button onClick={handleRevokeGoogle} className="px-4 py-1.5 bg-gray-50 text-gray-600 hover:bg-gray-100 text-xs font-bold rounded-lg border border-gray-100 transition-colors">
               Revoke
             </button>
           </div>
@@ -1220,11 +1326,21 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-10 space-y-6 max-w-xl mx-auto">
         <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Current password</label>
+          <div className="relative flex items-center">
+            <input type={showPasswords.current ? 'text' : 'password'} value={passwords.currentPassword} onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})} placeholder="" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm" />
+            <button type="button" onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})} className="absolute right-4 text-gray-400 hover:text-gray-600">
+              {showPasswords.current ? <Eye size={18} /> : <EyeOff size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Set a new password</label>
           <div className="relative flex items-center">
-            <input type="password" value={passwords.newPassword} onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} placeholder="" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm" />
-            <button className="absolute right-4 text-gray-400 hover:text-gray-600">
-              <EyeOff size={18} />
+            <input type={showPasswords.new ? 'text' : 'password'} value={passwords.newPassword} onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} placeholder="" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm" />
+            <button type="button" onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})} className="absolute right-4 text-gray-400 hover:text-gray-600">
+              {showPasswords.new ? <Eye size={18} /> : <EyeOff size={18} />}
             </button>
           </div>
         </div>
@@ -1232,18 +1348,19 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">Confirm password</label>
           <div className="relative flex items-center">
-            <input type="password" value={passwords.confirmPassword} onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})} placeholder="" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm" />
-            <button className="absolute right-4 text-gray-400 hover:text-gray-600">
-              <EyeOff size={18} />
+            <input type={showPasswords.confirm ? 'text' : 'password'} value={passwords.confirmPassword} onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})} placeholder="" className="w-full bg-white border border-gray-100 rounded-lg px-4 py-3 focus:outline-none focus:border-gray-300 text-sm" />
+            <button type="button" onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})} className="absolute right-4 text-gray-400 hover:text-gray-600">
+              {showPasswords.confirm ? <Eye size={18} /> : <EyeOff size={18} />}
             </button>
           </div>
         </div>
 
-        <button 
-          onClick={handlePasswordUpdate} 
-          className="w-full py-3.5 mt-2 bg-[#2D2D2D] hover:bg-black text-white font-bold rounded-lg transition-colors text-sm"
+        <button
+          onClick={handlePasswordUpdate}
+          disabled={isUpdatingPassword}
+          className="w-full py-3.5 mt-2 bg-[#2D2D2D] hover:bg-black text-white font-bold rounded-lg transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Update Password
+          {isUpdatingPassword ? 'Updating...' : 'Update Password'}
         </button>
       </div>
     </div>
