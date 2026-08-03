@@ -159,3 +159,14 @@ export const cancelOrder = async (id, reason) => {
   if (!res.ok) throw new Error('Failed to cancel order');
   return await res.json();
 };
+
+export const updateOrderPayment = async (orderId, paymentData) => {
+  const res = await fetch(`${API_BASE}/orders/${encodeURIComponent(orderId)}/payment`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(paymentData)
+  });
+  if (!res.ok) throw new Error('Failed to update payment details');
+  return await res.json();
+};
+

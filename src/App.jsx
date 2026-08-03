@@ -25,6 +25,7 @@ import About from './pages/About';
 import Wishlist from './pages/Wishlist';
 import Faq from './pages/Faq';
 import Terms from './pages/Terms';
+import Payment from './pages/Payment';
 import CartDrawer from './components/CartDrawer';
 import Toast from './components/Toast';
 import { useCart } from './context/CartContext';
@@ -44,7 +45,7 @@ function App() {
   const isProductListingPage = location.pathname === '/products';
   const isProductDetailsPage = location.pathname.startsWith('/product/');
   const isHomePage = location.pathname === '/';
-  const isCheckoutPage = location.pathname === '/checkout' || location.pathname === '/order-confirmation';
+  const isCheckoutPage = location.pathname === '/checkout' || location.pathname === '/order-confirmation' || location.pathname.startsWith('/payment');
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isProfilePage = location.pathname === '/profile';
   const isTrackOrderPage = location.pathname === '/track-order';
@@ -135,6 +136,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/order-confirmation" element={<OrderConfirmation />} />
+        <Route path="/payment/:orderId" element={<Payment />} />
         <Route path="/track-order" element={<TrackOrder />} />
         <Route path="/consultation/:petType" element={<ConsultationForm />} />
         <Route path="/about" element={<About />} />

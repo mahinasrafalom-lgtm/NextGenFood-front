@@ -8,6 +8,8 @@ import { showToast } from '../components/Toast';
 import { placeOrder } from '../services/api';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
+
 const Checkout = ({ isLoggedIn }) => {
   const { cartItems, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart();
   const { currentUser } = useAuth();
@@ -48,7 +50,7 @@ const Checkout = ({ isLoggedIn }) => {
       const token = localStorage.getItem('authToken');
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:5005/api/users/addresses', {
+        const res = await fetch(`${API_BASE}/users/addresses`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
@@ -147,7 +149,11 @@ const Checkout = ({ isLoggedIn }) => {
       showToast(`Order placed successfully! Order ID: ${response.orderId}`);
       setTimeout(() => {
         clearCart();
-        navigate('/order-confirmation', { state: { orderId: response.orderId } });
+        if (['bkash', 'nagad', 'rocket'].includes(paymentMethod)) {
+          navigate(`/payment/${encodeURIComponent(response.orderId)}?method=${paymentMethod}`);
+        } else {
+          navigate('/order-confirmation', { state: { orderId: response.orderId } });
+        }
         window.scrollTo(0, 0);
       }, 1500);
     } catch (error) {
