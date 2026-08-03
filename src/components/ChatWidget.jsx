@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageCircle, X, ArrowLeft, MoreVertical, Paperclip, Smile, Mic, Send, Image as ImageIcon, Loader2, FileText, Volume2, Play, Pause } from 'lucide-react';
 import { createChat, getChat, sendMessage, uploadFile } from '../services/api';
+import socket from '../services/socket';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5005';
 
@@ -221,13 +222,19 @@ const ChatWidget = () => {
             setFormData(chat.user);
           }
         } catch (error) {
-          console.error("Failed to poll chat:", error);
+          console.error("Failed to fetch chat:", error);
         }
       };
       fetchChat();
-      interval = setInterval(fetchChat, 3000);
+      
+      const handleChatUpdate = (data) => {
+        if (data && data.chatId === chatId) {
+          fetchChat();
+        }
+      };
+      socket.on('chat_updated', handleChatUpdate);
+      return () => socket.off('chat_updated', handleChatUpdate);
     }
-    return () => clearInterval(interval);
   }, [step, chatId]);
 
   useEffect(() => {

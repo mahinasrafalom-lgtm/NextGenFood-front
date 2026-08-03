@@ -5,6 +5,7 @@ import { trackOrder, getUserOrders, cancelOrder } from '../services/api';
 import CancelOrderModal from '../components/CancelOrderModal';
 import CancelledOrderHero from '../components/CancelledOrderHero';
 import { useAuth } from '../context/AuthContext';
+import socket from '../services/socket';
 
 const TrackOrder = () => {
   const navigate = useNavigate();
@@ -28,6 +29,21 @@ const TrackOrder = () => {
         .finally(() => setLoadingRecent(false));
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (orderData && (orderData.id || orderData._id)) {
+      const handleOrderUpdate = (data) => {
+        const currentId = orderData.id || orderData._id;
+        if (data && data.orderId === currentId) {
+          trackOrder(currentId)
+            .then(res => setOrderData(res))
+            .catch(err => console.error('Failed to update tracked order', err));
+        }
+      };
+      socket.on('order_updated', handleOrderUpdate);
+      return () => socket.off('order_updated', handleOrderUpdate);
+    }
+  }, [orderData?.id, orderData?._id]);
 
   const handleTrack = async (e, forceId = null) => {
     if (e) e.preventDefault();

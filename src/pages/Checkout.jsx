@@ -5,7 +5,7 @@ import SearchableSelect from '../components/SearchableSelect';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/Toast';
-import { placeOrder } from '../services/api';
+import { placeOrder, fetchStorefrontData } from '../services/api';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
@@ -38,6 +38,7 @@ const Checkout = ({ isLoggedIn }) => {
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [isCouponOpen, setIsCouponOpen] = useState(false);
+  const [offer, setOffer] = useState(null);
 
   // Delivery cost: inside Dhaka 60tk, outside Dhaka 120tk
   const deliveryCost = cartItems.length === 0 || !shippingAddress.district
@@ -65,6 +66,18 @@ const Checkout = ({ isLoggedIn }) => {
       }
     };
     fetchAddresses();
+
+    const fetchOffer = async () => {
+      try {
+        const data = await fetchStorefrontData();
+        if (data && data.cartOffer && data.cartOffer.isActive) {
+          setOffer(data.cartOffer);
+        }
+      } catch (error) {
+        console.error('Failed to fetch storefront offer', error);
+      }
+    };
+    fetchOffer();
   }, []);
 
   const applySavedAddress = (addr) => {
@@ -137,6 +150,8 @@ const Checkout = ({ isLoggedIn }) => {
         price: item.priceMin || item.price || 0
       }));
 
+      const rewardItem = offer && (cartTotal >= offer.targetAmount) ? offer.rewardTitle : null;
+
       const response = await placeOrder({
         email: currentUser?.email || shippingAddress.email || 'guest@example.com',
         shippingAddress,
@@ -144,7 +159,8 @@ const Checkout = ({ isLoggedIn }) => {
         items: formattedItems,
         total: grandTotal,
         deliveryCost,
-        paymentMethod
+        paymentMethod,
+        rewardItem
       });
       showToast(`Order placed successfully! Order ID: ${response.orderId}`);
       setTimeout(() => {

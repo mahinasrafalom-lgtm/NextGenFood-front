@@ -13,6 +13,7 @@ import { useCart } from '../context/CartContext';
 import { unlink, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '../firebase';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
+import socket from '../services/socket';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
 
@@ -107,7 +108,8 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         console.log('About to fetch orders for user:', currentUser?.email);
         console.log('Firebase UID:', currentUser?.uid);
         
-        fetch(`${API_BASE}/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` }})
+        const fetchOrdersData = () => {
+          fetch(`${API_BASE}/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Orders response status:', res.status);
             console.log('Current user email:', currentUser?.email);
@@ -139,6 +141,15 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
             console.error('Orders fetch error:', err);
             setOrders([]);
           });
+      };
+      
+      fetchOrdersData();
+
+      // Listen for socket events
+      const handleOrderUpdate = () => {
+        fetchOrdersData();
+      };
+      socket.on('order_updated', handleOrderUpdate);
 
         // Fetch Tickets
         fetch(`${API_BASE}/tickets`, { headers: { Authorization: `Bearer ${token}` }})
@@ -214,6 +225,10 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
       } else {
         console.warn('No auth token found in localStorage');
       }
+      
+      return () => {
+        socket.off('order_updated', handleOrderUpdate);
+      };
     } else {
       console.warn('No current user');
     }
