@@ -12,6 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { ALL_DISTRICTS, THANAS_BY_DISTRICT } from '../data/locations';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
+
 const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const navigate = useNavigate();
   const { currentUser, logout, changePassword, updateProfile } = useAuth();
@@ -65,7 +67,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
         console.log('Fetching profile data with token:', token ? 'Present' : 'Missing');
         
         // Fetch Profile
-        fetch('http://localhost:5005/api/users/profile', { headers: { Authorization: `Bearer ${token}` }})
+        fetch(`${API_BASE}/users/profile`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Profile response status:', res.status);
             return res.json();
@@ -79,7 +81,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           });
           
         // Fetch Addresses
-        fetch('http://localhost:5005/api/users/addresses', { headers: { Authorization: `Bearer ${token}` }})
+        fetch(`${API_BASE}/users/addresses`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Addresses response status:', res.status);
             return res.json();
@@ -93,9 +95,13 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           });
 
         // Fetch Orders
-        fetch('http://localhost:5005/api/orders/my-orders', { headers: { Authorization: `Bearer ${token}` }})
+        console.log('About to fetch orders for user:', currentUser?.email);
+        console.log('Firebase UID:', currentUser?.uid);
+        
+        fetch(`${API_BASE}/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Orders response status:', res.status);
+            console.log('Current user email:', currentUser?.email);
             if (!res.ok) {
               throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
@@ -104,16 +110,29 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           .then(data => {
             console.log('Orders data received:', data);
             console.log('Orders count:', Array.isArray(data) ? data.length : 'Not an array');
+            
+            if (Array.isArray(data) && data.length > 0) {
+              console.log('Orders found:');
+              data.forEach((order, index) => {
+                console.log(`  Order ${index + 1}: ID=${order.id}, Email=${order.email}, Status=${order.status}, Amount=${order.totalAmount}`);
+              });
+            }
+            
             const ordersArray = Array.isArray(data) ? data : [];
             setOrders(ordersArray);
             console.log('Orders set in state:', ordersArray.length, 'orders');
+            
+            if (ordersArray.length === 0) {
+              console.warn('ISSUE: No orders found for user:', currentUser?.email);
+              console.warn('Check if order email matches current user email');
+            }
           }).catch(err => {
             console.error('Orders fetch error:', err);
             setOrders([]);
           });
 
         // Fetch Tickets
-        fetch('http://localhost:5005/api/tickets', { headers: { Authorization: `Bearer ${token}` }})
+        fetch(`${API_BASE}/tickets`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Tickets response status:', res.status);
             return res.json();
@@ -127,7 +146,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           });
 
         // Fetch Coupons
-        fetch('http://localhost:5005/api/coupons', { headers: { Authorization: `Bearer ${token}` }})
+        fetch(`${API_BASE}/coupons`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Coupons response status:', res.status);
             return res.json();
@@ -141,7 +160,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
           });
 
         // Fetch Reviews with fallback for embedded product reviews
-        fetch('http://localhost:5005/api/reviews/my-reviews', { headers: { Authorization: `Bearer ${token}` }})
+        fetch(`${API_BASE}/reviews/my-reviews`, { headers: { Authorization: `Bearer ${token}` }})
           .then(res => {
             console.log('Reviews response status:', res.status);
             return res.json();
@@ -213,7 +232,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
     }
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch('http://localhost:5005/api/tickets', {
+      const res = await fetch(`${API_BASE}/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(newTicket)
@@ -232,7 +251,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
     if (!replyMessage.trim() || !selectedTicket) return;
     const token = localStorage.getItem('authToken');
     try {
-      const res = await fetch(`http://localhost:5005/api/tickets/${selectedTicket._id}`, {
+      const res = await fetch(`${API_BASE}/tickets/${selectedTicket._id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -329,6 +348,9 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   );
 
   const renderDashboard = () => {
+    console.log('Dashboard - Total orders in state:', orders.length);
+    console.log('Dashboard - Orders:', orders);
+    
     const totalOrders = orders.length;
     const runningOrders = orders.filter(o => {
       const status = o.status ? o.status.toLowerCase() : '';
@@ -631,7 +653,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const handleSaveAddress = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch('http://localhost:5005/api/users/addresses', {
+      const res = await fetch(`${API_BASE}/users/addresses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(newAddress)
@@ -653,7 +675,7 @@ const Profile = ({ isLoggedIn: mockIsLoggedIn }) => {
   const handleDeleteAddress = async (id) => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`http://localhost:5005/api/users/addresses/${id}`, {
+      const res = await fetch(`${API_BASE}/users/addresses/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
