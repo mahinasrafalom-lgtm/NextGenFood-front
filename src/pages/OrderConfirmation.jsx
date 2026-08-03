@@ -100,6 +100,19 @@ const OrderConfirmation = () => {
                     'text-brand-mid'
                   }`}>{orderData.status}</p>
                 </div>
+                {['bkash', 'nagad', 'rocket'].includes(orderData.paymentMethod?.toLowerCase()) && (
+                  <>
+                    <div className="hidden sm:block w-px h-10 bg-brand-mid/50"></div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Payment</p>
+                      <p className={`text-lg font-bold ${
+                        orderData.paymentStatus === 'Approved' ? 'text-green-600' :
+                        orderData.paymentStatus === 'Rejected' ? 'text-red-600' :
+                        'text-orange-600'
+                      }`}>{orderData.paymentStatus || 'Pending Verification'}</p>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>

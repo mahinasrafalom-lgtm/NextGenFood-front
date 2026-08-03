@@ -207,6 +207,15 @@ const TrackOrder = () => {
                 <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 inline-flex items-center gap-2 shadow-sm font-semibold text-brand-dark">
                   Status: <span className="text-brand-mid capitalize">{orderData.status}</span>
                 </div>
+                {['bkash', 'nagad', 'rocket'].includes(orderData.paymentMethod?.toLowerCase()) && (
+                  <div className={`px-4 py-1.5 rounded-lg border inline-flex items-center gap-2 shadow-sm font-semibold text-sm ${
+                    orderData.paymentStatus === 'Approved' ? 'bg-green-50 border-green-200 text-green-700' :
+                    orderData.paymentStatus === 'Rejected' ? 'bg-red-50 border-red-200 text-red-700' :
+                    'bg-orange-50 border-orange-200 text-orange-700'
+                  }`}>
+                    Payment: <span>{orderData.paymentStatus || 'Pending Verification'}</span>
+                  </div>
+                )}
                 {orderData.status !== 'Delivered' && orderData.status !== 'Cancelled' && orderData.status !== 'Shipped' && (
                   <button 
                     onClick={() => setIsCancelModalOpen(true)}
